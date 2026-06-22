@@ -42,10 +42,13 @@ export function SideElevation() {
   const lo = Math.max(mountBottom, persona.reachLow);
   const hi = Math.min(screenTop, persona.reachHigh);
   const targetY = lo <= hi ? (lo + hi) / 2 : persona.reachHigh;
+  // The screen is pushed forward off the wall by frontOffset; the viewer stands
+  // `distance` in front of it, so their depth from the wall includes both.
+  const personDepth = distance + geom.frontOffset;
   const tp = geom.pointAtHeight(targetY); // [0, y, depth]
-  const reachLen = Math.hypot(distance - tp[2], shoulderH - tp[1]);
+  const reachLen = Math.hypot(personDepth - tp[2], shoulderH - tp[1]);
   const t = Math.min(1, armLen / reachLen);
-  const handDepth = distance + (tp[2] - distance) * t;
+  const handDepth = personDepth + (tp[2] - personDepth) * t;
   const handHeight = shoulderH + (tp[1] - shoulderH) * t;
   const touches = reachLen <= armLen;
   const v = s.getVerdict();
@@ -58,7 +61,7 @@ export function SideElevation() {
   const mB = 30;
   const PANEL = 86;
   const Hc = Math.max(screenTop, eyeH + 6, persona.statureHeight, 84) + 4;
-  const Dc = distance + 30;
+  const Dc = personDepth + 30;
   const VBW = mL + Dc + PANEL + mR;
   const VBH = mT + Hc + mB;
   const wallX = mL;
@@ -66,7 +69,7 @@ export function SideElevation() {
   const X = (depth: number) => wallX + depth;
   const Y = (h: number) => groundY - h;
 
-  const px = X(distance); // person depth
+  const px = X(personDepth); // person depth from the wall
   const sw = { major: 0.7, thin: 0.35, hair: 0.18 };
   const FS = 4.6;
 
@@ -249,7 +252,7 @@ export function SideElevation() {
         <VDim x={wallX - 19} y0={groundY} y1={Y(screenTop)} label={fmtLen(screenTop, units)} fs={FS} />
         <HDim
           y={groundY + 13}
-          x0={wallX}
+          x0={X(geom.frontOffset)}
           x1={px}
           label={`${fmtDist(distance, units)} ${s.mode === 'touch' ? '(touch)' : ''}`}
           fs={FS}

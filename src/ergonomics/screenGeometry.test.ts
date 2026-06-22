@@ -16,22 +16,26 @@ describe('screenGeometry — reduces to a vertical wall at tilt 0', () => {
   });
 });
 
-describe('screenGeometry — back-tilt leans the top toward the viewer', () => {
+describe('screenGeometry — look-down kiosk: pushed forward, top recedes to wall', () => {
   const t = 30;
   const rad = (t * Math.PI) / 180;
   const g = screenGeometry({ mountBottom: 24, height: 30, tiltDeg: t });
-  it('top rises by h·cos and moves toward the viewer by h·sin', () => {
+  it('the panel is pushed forward by frontOffset = h·sin', () => {
+    expect(g.frontOffset).toBeCloseTo(30 * Math.sin(rad), 4);
+    expect(g.pivot[2]).toBeCloseTo(g.frontOffset, 6); // bottom edge out front
+  });
+  it('the back-tilted top edge lands at the wall (z = 0) and rises by h·cos', () => {
+    expect(g.top[2]).toBeCloseTo(0, 6);
     expect(g.top[1]).toBeCloseTo(24 + 30 * Math.cos(rad), 3);
-    expect(g.top[2]).toBeCloseTo(30 * Math.sin(rad), 3);
   });
   it('center sits in front of the wall (z > 0)', () => {
     expect(g.center[2]).toBeGreaterThan(0);
   });
-  it('higher points on the screen are nearer the viewer', () => {
-    expect(g.pointAtHeight(44)[2]).toBeGreaterThan(g.pointAtHeight(30)[2]);
+  it('higher points on the screen recede toward the wall (smaller z)', () => {
+    expect(g.pointAtHeight(44)[2]).toBeLessThan(g.pointAtHeight(30)[2]);
   });
-  it('the face normal tilts down toward the standing viewer', () => {
-    expect(g.normal[1]).toBeLessThan(0);
+  it('the face normal points up and toward the viewer', () => {
+    expect(g.normal[1]).toBeGreaterThan(0);
     expect(g.normal[2]).toBeCloseTo(Math.cos(rad), 4);
   });
 });

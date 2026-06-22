@@ -234,14 +234,17 @@ const RANK: Record<VerdictLevel, number> = { good: 0, caution: 1, bad: 2 };
  */
 export function effectiveDistance(cfg: ScreenConfig, persona: Persona): number {
   const standing = cfg.mode === 'touch' ? persona.touchDistance : cfg.viewingDistance;
-  const eye = [0, persona.eyeHeight, standing] as const;
   const dim = { mountBottom: cfg.mountBottom, height: cfg.size.height };
-  const c0 = screenGeometry({ ...dim, tiltDeg: 0 }).center;
-  const ct = screenGeometry({ ...dim, tiltDeg: cfg.tiltDeg }).center;
-  const dist = (p: readonly number[]) =>
-    Math.hypot(eye[0] - p[0], eye[1] - p[1], eye[2] - p[2]);
-  const d0 = dist(c0);
-  return d0 > 0 ? standing * (dist(ct) / d0) : standing;
+  const g0 = screenGeometry({ ...dim, tiltDeg: 0 });
+  const gt = screenGeometry({ ...dim, tiltDeg: cfg.tiltDeg });
+  // The viewer stands `standing` in front of the screen, which is itself pushed
+  // forward off the wall by frontOffset — so the eye z includes both.
+  const eye0 = [0, persona.eyeHeight, standing] as const;
+  const eyeT = [0, persona.eyeHeight, standing + gt.frontOffset] as const;
+  const dist = (e: readonly number[], p: readonly number[]) =>
+    Math.hypot(e[0] - p[0], e[1] - p[1], e[2] - p[2]);
+  const d0 = dist(eye0, g0.center);
+  return d0 > 0 ? standing * (dist(eyeT, gt.center) / d0) : standing;
 }
 
 export function verdict(cfg: ScreenConfig): Verdict {

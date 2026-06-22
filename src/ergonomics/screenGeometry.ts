@@ -1,13 +1,14 @@
 // Single source of truth for the screen's position and orientation in space.
 // All values are in INCHES, world axes: +x right, +y up (AFF), +z toward the
-// viewer (wall at z=0). The screen tilts about its bottom edge so its top leans
-// TOWARD the viewer (+z) and rises — a podium/lectern touchscreen angled up
-// toward the user. This keeps it in front of the wall and reads cleanly in both
-// 3D and the 2D side elevation. Every consumer (engine, 3D scene, 2D elevation)
-// uses this so the geometry is defined once.
+// viewer (wall at z=0). A tilt models a look-down kiosk/podium: the screen tilts
+// BACK (top recedes toward the wall) and the whole panel is pushed FORWARD off
+// the wall by `frontOffset` so the back-tilted top lands at the wall (z=0) and
+// the bottom edge sits out in front — nothing clips into the wall. The viewer is
+// pushed forward by the same offset (see avatarLayout / engine). Every consumer
+// (engine, 3D scene, 2D elevation) uses this so the geometry is defined once.
 //
-// At tiltDeg = 0 everything reduces to the original vertical-wall values, which
-// is what keeps the existing behaviour (and tests) byte-for-byte unchanged.
+// At tiltDeg = 0 frontOffset is 0 and everything reduces to the original
+// vertical-wall values, keeping existing behaviour (and tests) unchanged.
 
 export type Point3 = [number, number, number];
 
@@ -27,6 +28,8 @@ export interface ScreenGeometry {
   pointAtHeight: (yIn: number) => Point3;
   /** Perpendicular distance from an eye point to the screen plane. */
   perpDistanceFromEye: (eye: Point3) => number;
+  /** How far the panel is pushed forward off the wall (z of the bottom edge). */
+  frontOffset: number;
 }
 
 export function screenGeometry(params: {
@@ -39,23 +42,26 @@ export function screenGeometry(params: {
   const cos = Math.cos(tiltRad);
   const sin = Math.sin(tiltRad);
 
-  const pivot: Point3 = [0, mountBottom, 0];
-  const upDir: Point3 = [0, cos, sin]; // up the face, leaning toward the viewer
-  const center: Point3 = [0, mountBottom + (height / 2) * cos, (height / 2) * sin];
-  const top: Point3 = [0, mountBottom + height * cos, height * sin];
-  const normal: Point3 = [0, -sin || 0, cos]; // outward face toward the viewer (avoid -0)
+  // Forward offset so the back-tilted top edge lands at the wall (z=0).
+  const frontOffset = height * sin;
+  const pivot: Point3 = [0, mountBottom, frontOffset]; // bottom edge, out front
+  const upDir: Point3 = [0, cos, -sin]; // up the face, receding toward the wall
+  const center: Point3 = [0, mountBottom + (height / 2) * cos, frontOffset - (height / 2) * sin];
+  const top: Point3 = [0, mountBottom + height * cos, 0];
+  const normal: Point3 = [0, sin, cos]; // outward face: toward viewer and up
 
   return {
     tiltRad,
+    frontOffset,
     pivot,
     upDir,
     center,
     top,
     normal,
-    // World Y = mountBottom + s·cos along upDir ⇒ z = (yIn − mountBottom)·tan.
-    pointAtHeight: (yIn) => [0, yIn, (yIn - mountBottom) * (sin / (cos || 1e-9))],
+    // On the plane: y = mountBottom + s·cos ⇒ z = frontOffset − (yIn−mountBottom)·tan.
+    pointAtHeight: (yIn) => [0, yIn, frontOffset - (yIn - mountBottom) * (sin / (cos || 1e-9))],
     // |(eye − pivot) · n|, n unit.
     perpDistanceFromEye: (eye) =>
-      Math.abs(eye[2] * cos - (eye[1] - mountBottom) * sin),
+      Math.abs((eye[1] - mountBottom) * sin + (eye[2] - frontOffset) * cos),
   };
 }

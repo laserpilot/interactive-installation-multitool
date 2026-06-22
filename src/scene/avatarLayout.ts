@@ -28,7 +28,14 @@ export function avatarLayout(
   screenTopIn: number,
   tiltDeg = 0,
 ): AvatarLayout {
-  const z = f(distanceIn);
+  // The screen is pushed forward off the wall by frontOffset when tilted; the
+  // viewer stands `distanceIn` in front of it, so push the avatar forward too.
+  const geom = screenGeometry({
+    mountBottom: screenBottomIn,
+    height: screenTopIn - screenBottomIn,
+    tiltDeg,
+  });
+  const z = f(distanceIn + geom.frontOffset);
   const eye: [number, number, number] = [0, f(persona.eyeHeight), z];
   const shoulder: [number, number, number] = [f(7), f(persona.shoulderHeight), z];
 
@@ -36,12 +43,7 @@ export function avatarLayout(
   const lo = Math.max(screenBottomIn, persona.reachLow);
   const hi = Math.min(screenTopIn, persona.reachHigh);
   const targetY = lo <= hi ? (lo + hi) / 2 : persona.reachHigh;
-  // Place it on the (possibly tilted) screen plane — its z recedes with tilt.
-  const geom = screenGeometry({
-    mountBottom: screenBottomIn,
-    height: screenTopIn - screenBottomIn,
-    tiltDeg,
-  });
+  // Place it on the (possibly tilted) screen plane.
   const tp = geom.pointAtHeight(targetY);
   const target: [number, number, number] = [f(tp[0]), f(tp[1]), f(tp[2])];
 
