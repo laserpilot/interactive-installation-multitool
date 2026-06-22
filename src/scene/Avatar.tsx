@@ -11,14 +11,14 @@ const SKIN = '#d9b08c';
 const BODY = '#3f4a57';
 
 export function Avatar() {
-  const { personaId, mode, viewingDistance, diagonal, aspectW, aspectH, mountBottom } =
+  const { personaId, mode, viewingDistance, diagonal, aspectW, aspectH, mountBottom, tiltDeg } =
     useConfigStore();
   const persona = PERSONAS[personaId];
   const size = sizeFromDiagonal(diagonal, aspectW, aspectH);
   const distance = mode === 'touch' ? persona.touchDistance : viewingDistance;
   const screenTop = mountBottom + size.height;
 
-  const L = avatarLayout(persona, distance, mountBottom, screenTop);
+  const L = avatarLayout(persona, distance, mountBottom, screenTop, tiltDeg);
   const z = L.z;
 
   const hipH = persona.seated ? 19 : 0.52 * persona.statureHeight;

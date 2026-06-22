@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { PERSONAS } from '../ergonomics/constants';
 import { sizeFromDiagonal } from '../ergonomics/engine';
+import { screenGeometry } from '../ergonomics/screenGeometry';
 import { useConfigStore } from '../store/useConfigStore';
 import { fmtDist, fmtLen } from '../ui/units';
 
@@ -27,20 +28,25 @@ export function SideElevation() {
   const distance = s.mode === 'touch' ? persona.touchDistance : s.viewingDistance;
   const mountBottom = s.mountBottom;
   const screenTop = mountBottom + size.height;
+  const geom = screenGeometry({ mountBottom, height: size.height, tiltDeg: s.tiltDeg });
+  // Screen edges in side-view (depth = z, height = y).
+  const screenBot = { d: geom.pivot[2], y: geom.pivot[1] };
+  const screenTopPt = { d: geom.top[2], y: geom.top[1] };
 
   const eyeH = persona.eyeHeight;
   const shoulderH = persona.shoulderHeight;
   const hipH = persona.seated ? 19 : 0.52 * persona.statureHeight;
   const armLen = 0.42 * persona.statureHeight;
 
-  // touch target + reach (mirrors avatarLayout)
+  // touch target + reach (mirrors avatarLayout): target sits on the tilted plane.
   const lo = Math.max(mountBottom, persona.reachLow);
   const hi = Math.min(screenTop, persona.reachHigh);
   const targetY = lo <= hi ? (lo + hi) / 2 : persona.reachHigh;
-  const reachLen = Math.hypot(distance, shoulderH - targetY);
+  const tp = geom.pointAtHeight(targetY); // [0, y, depth]
+  const reachLen = Math.hypot(distance - tp[2], shoulderH - tp[1]);
   const t = Math.min(1, armLen / reachLen);
-  const handDepth = distance * (1 - t);
-  const handHeight = shoulderH + (targetY - shoulderH) * t;
+  const handDepth = distance + (tp[2] - distance) * t;
+  const handHeight = shoulderH + (tp[1] - shoulderH) * t;
   const touches = reachLen <= armLen;
   const v = s.getVerdict();
 
@@ -130,33 +136,56 @@ export function SideElevation() {
         <line x1={0} y1={groundY} x2={VBW} y2={groundY} stroke={DARK} strokeWidth={sw.major} />
         <line x1={wallX} y1={groundY} x2={wallX} y2={Y(Hc)} stroke={DARK} strokeWidth={sw.major} />
 
-        {/* screen, edge-on, mounted on the wall */}
-        <rect x={wallX} y={Y(screenTop)} width={2.4} height={size.height} fill={ACCENT} />
+        {/* stand / podium under the screen bottom edge */}
+        {s.mountType === 'stand' && mountBottom > 1 && (
+          <rect
+            x={wallX}
+            y={Y(mountBottom)}
+            width={16}
+            height={mountBottom}
+            fill="#5a6470"
+            opacity={0.45}
+            stroke="#3a444f"
+            strokeWidth={sw.thin}
+          />
+        )}
+        {/* screen, edge-on (angled when tilted) */}
+        <line
+          x1={X(screenBot.d)}
+          y1={Y(screenBot.y)}
+          x2={X(screenTopPt.d)}
+          y2={Y(screenTopPt.y)}
+          stroke={ACCENT}
+          strokeWidth={2.6}
+          strokeLinecap="round"
+        />
         <text
-          x={wallX + 9}
-          y={Y(screenTop) - 2}
+          x={X(screenTopPt.d) + 5}
+          y={Y(screenTopPt.y) - 2}
           fontSize={FS}
           fill={ACCENT}
           style={haloStyle}
         >
           {`${Math.round(s.diagonal)}" screen`}
         </text>
-        {/* screen-height dimension, glued to the screen */}
-        <g stroke={ACCENT} strokeWidth={sw.thin}>
-          <line x1={wallX + 5} y1={Y(screenTop)} x2={wallX + 5} y2={Y(mountBottom)} />
-          <line x1={wallX + 3} y1={Y(screenTop)} x2={wallX + 7} y2={Y(screenTop)} />
-          <line x1={wallX + 3} y1={Y(mountBottom)} x2={wallX + 7} y2={Y(mountBottom)} />
-          <text
-            x={wallX + 9}
-            y={Y(screenTop) + size.height / 2}
-            fontSize={FS * 0.85}
-            fill={ACCENT}
-            dominantBaseline="middle"
-            stroke="none"
-          >
-            {`H ${fmtLen(size.height, units)}`}
-          </text>
-        </g>
+        {/* screen-height dimension (vertical screens only; spec block has W×H) */}
+        {s.tiltDeg < 0.5 && (
+          <g stroke={ACCENT} strokeWidth={sw.thin}>
+            <line x1={wallX + 5} y1={Y(screenTop)} x2={wallX + 5} y2={Y(mountBottom)} />
+            <line x1={wallX + 3} y1={Y(screenTop)} x2={wallX + 7} y2={Y(screenTop)} />
+            <line x1={wallX + 3} y1={Y(mountBottom)} x2={wallX + 7} y2={Y(mountBottom)} />
+            <text
+              x={wallX + 9}
+              y={Y(screenTop) + size.height / 2}
+              fontSize={FS * 0.85}
+              fill={ACCENT}
+              dominantBaseline="middle"
+              stroke="none"
+            >
+              {`H ${fmtLen(size.height, units)}`}
+            </text>
+          </g>
+        )}
 
         {/* eye level */}
         <line
@@ -232,8 +261,10 @@ export function SideElevation() {
           rows={[
             ['Screen', `${Math.round(s.diagonal)}"  ${s.aspectW}:${s.aspectH}`],
             ['W × H', `${fmtLen(size.width, units)} × ${fmtLen(size.height, units)}`],
+            ['Mount', s.mountType === 'stand' ? 'Stand' : 'Wall'],
+            ['Tilt', `${Math.round(s.tiltDeg)}°`],
             ['Mount (bottom)', fmtLen(mountBottom, units)],
-            ['Top of screen', fmtLen(screenTop, units)],
+            ['Top of screen', fmtLen(screenTopPt.y, units)],
             ['Eye level', fmtLen(eyeH, units)],
             ['ADA reach', `15–48"`],
             ['Distance', `${fmtDist(distance, units)} (${s.mode})`],

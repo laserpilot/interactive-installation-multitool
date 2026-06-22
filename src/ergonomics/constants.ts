@@ -111,7 +111,7 @@ export const PERSONAS: Record<PersonaId, Persona> = {
     eyeHeight: 47,
     reachHigh: 48, // ADA unobstructed forward/side reach cap
     reachLow: 15,
-    touchDistance: 22,
+    touchDistance: 20,
     statureHeight: 51, // seated head height
     shoulderHeight: 41,
     seated: true,

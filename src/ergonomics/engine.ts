@@ -19,6 +19,7 @@ import {
   type PersonaId,
   type Strictness,
 } from './constants';
+import { screenGeometry } from './screenGeometry';
 
 export type Mode = 'touch' | 'view';
 
@@ -189,6 +190,8 @@ export type VerdictLevel = 'good' | 'caution' | 'bad';
 export interface ScreenConfig {
   size: ScreenSize;
   mountBottom: number; // in AFF
+  /** Back-tilt of the screen in degrees; 0 = vertical (default). */
+  tiltDeg?: number;
   mode: Mode;
   /** Used in 'view' mode; in 'touch' mode distance is derived from persona. */
   viewingDistance: number; // in
@@ -222,9 +225,23 @@ export interface Verdict {
 
 const RANK: Record<VerdictLevel, number> = { good: 0, caution: 1, bad: 2 };
 
-/** Effective eye-to-glass distance for the chosen mode. */
+/**
+ * Effective viewing distance for angle/pixel judgments. We take the configured
+ * standing distance and scale it by how the eye→screen-center distance changes
+ * with tilt. At tilt 0 the ratio is 1, so the value is exactly the standing
+ * distance (existing behaviour unchanged); a tilt that brings the screen center
+ * nearer the eye shortens it, and vice-versa. Robust — never degenerates.
+ */
 export function effectiveDistance(cfg: ScreenConfig, persona: Persona): number {
-  return cfg.mode === 'touch' ? persona.touchDistance : cfg.viewingDistance;
+  const standing = cfg.mode === 'touch' ? persona.touchDistance : cfg.viewingDistance;
+  const eye = [0, persona.eyeHeight, standing] as const;
+  const dim = { mountBottom: cfg.mountBottom, height: cfg.size.height };
+  const c0 = screenGeometry({ ...dim, tiltDeg: 0 }).center;
+  const ct = screenGeometry({ ...dim, tiltDeg: cfg.tiltDeg }).center;
+  const dist = (p: readonly number[]) =>
+    Math.hypot(eye[0] - p[0], eye[1] - p[1], eye[2] - p[2]);
+  const d0 = dist(c0);
+  return d0 > 0 ? standing * (dist(ct) / d0) : standing;
 }
 
 export function verdict(cfg: ScreenConfig): Verdict {

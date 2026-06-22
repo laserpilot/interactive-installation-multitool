@@ -244,6 +244,23 @@ describe('verdict — standoff guidance', () => {
   });
 });
 
+describe('verdict — tilt', () => {
+  it('tiltDeg 0 is identical to omitting tilt (non-breaking)', () => {
+    const base = cfg({ diag: 55, mode: 'view', viewingDistance: 96 });
+    const withZero = verdict({ ...base, tiltDeg: 0 });
+    const without = verdict(base);
+    expect(withZero.effectiveDistance).toBeCloseTo(without.effectiveDistance, 9);
+    expect(withZero.horizontalAngle).toBeCloseTo(without.horizontalAngle, 9);
+    expect(withZero.level).toBe(without.level);
+  });
+  it('a tilt changes the effective distance (and thus the angle)', () => {
+    const base = cfg({ diag: 55, mode: 'view', viewingDistance: 96, mountBottom: 40 });
+    const flat = verdict({ ...base, tiltDeg: 0 }).effectiveDistance;
+    const tilted = verdict({ ...base, tiltDeg: 30 }).effectiveDistance;
+    expect(tilted).not.toBeCloseTo(flat, 1);
+  });
+});
+
 describe('verdict — personas reach differently', () => {
   it('a child cannot reach as high as an adult on the same screen', () => {
     const tall = cfg({ diag: 55, mode: 'touch', mountBottom: 40 });

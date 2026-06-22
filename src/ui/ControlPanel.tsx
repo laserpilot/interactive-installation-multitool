@@ -128,6 +128,46 @@ export function ControlPanel() {
         Use recommended mount height
       </button>
 
+      <Row label="Mount type">
+        <span className="seg">
+          <button
+            className={s.mountType === 'wall' ? 'on' : ''}
+            onClick={() => s.set('mountType', 'wall')}
+          >
+            Wall
+          </button>
+          <button
+            className={s.mountType === 'stand' ? 'on' : ''}
+            onClick={() => s.set('mountType', 'stand')}
+          >
+            Stand
+          </button>
+        </span>
+      </Row>
+
+      <div className="field">
+        <div className="field-head">
+          <span className="row-label">Tilt back (°)</span>
+          <input
+            className="num-sm"
+            type="number"
+            min={0}
+            max={60}
+            value={round(s.tiltDeg)}
+            onChange={(e) => s.set('tiltDeg', Number(e.target.value))}
+          />
+        </div>
+        <input
+          className="slider"
+          type="range"
+          min={0}
+          max={60}
+          step={1}
+          value={s.tiltDeg}
+          onChange={(e) => s.set('tiltDeg', Number(e.target.value))}
+        />
+      </div>
+
       <h2>Context</h2>
 
       <Row label="Use mode">

@@ -44,7 +44,8 @@ const MARBLE = new THREE.MeshStandardMaterial({
 
 function GltfAvatar({ cfg, persona }: { cfg: ModelCfg; persona: Persona }) {
   const { scene } = useGLTF(cfg.url);
-  const { mode, viewingDistance, diagonal, aspectW, aspectH, mountBottom } = useConfigStore();
+  const { mode, viewingDistance, diagonal, aspectW, aspectH, mountBottom, tiltDeg } =
+    useConfigStore();
 
   // Clone (skeleton-aware), strip lights/cameras, apply marble, orient per the
   // model's config, then measure the normalized bounding box once per asset.
@@ -71,7 +72,7 @@ function GltfAvatar({ cfg, persona }: { cfg: ModelCfg; persona: Persona }) {
 
   const screen = sizeFromDiagonal(diagonal, aspectW, aspectH);
   const distance = mode === 'touch' ? persona.touchDistance : viewingDistance;
-  const L = avatarLayout(persona, distance, mountBottom, mountBottom + screen.height);
+  const L = avatarLayout(persona, distance, mountBottom, mountBottom + screen.height, tiltDeg);
 
   const scale = f(persona.statureHeight) / prep.height;
   const bodyZ = L.z - f(cfg.handGap);

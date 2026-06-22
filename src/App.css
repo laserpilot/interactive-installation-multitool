@@ -150,3 +150,36 @@ button.ghost { width: 100%; margin-top: 6px; background: transparent; }
   background: rgba(11,14,18,.85); border: 1px solid var(--line); color: var(--text);
   padding: 8px 14px; border-radius: 8px; font-size: 12px; max-width: 420px; text-align: center;
 }
+
+.num-readout { font-variant-numeric: tabular-nums; font-weight: 600; }
+.seg.tabs button { padding: 6px 14px; }
+
+/* ---- dvLED preview ---- */
+.dvled-stage { position: absolute; inset: 0; display: flex; flex-direction: column; background: #06080b; }
+.dvled-frame {
+  flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+  padding: 18px; overflow: hidden;
+}
+.dvled-canvas { display: block; border-radius: 4px; box-shadow: 0 0 0 1px var(--line), 0 20px 60px rgba(0,0,0,.5); }
+
+.dvled-readout {
+  border-top: 1px solid var(--line); background: var(--panel);
+  padding: 12px 18px; display: flex; flex-direction: column; gap: 10px;
+}
+.dvled-verdict {
+  display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px;
+}
+.dvled-verdict .dvled-dot { width: 10px; height: 10px; border-radius: 50%; }
+.dvled-verdict .dvled-sub { color: var(--muted); font-weight: 500; font-size: 12px; margin-left: 2px; }
+.dvled-verdict.good { color: var(--good); }
+.dvled-verdict.good .dvled-dot { background: var(--good); }
+.dvled-verdict.caution { color: var(--caution); }
+.dvled-verdict.caution .dvled-dot { background: var(--caution); }
+.dvled-verdict.bad { color: var(--bad); }
+.dvled-verdict.bad .dvled-dot { background: var(--bad); }
+
+.dvled-metrics { display: flex; gap: 10px; margin: 0; flex-wrap: wrap; }
+.dvled-metrics > div { background: var(--panel-2); border-radius: 8px; padding: 7px 12px; min-width: 120px; }
+.dvled-metrics dt { color: var(--muted); font-size: 11px; }
+.dvled-metrics dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dvled-note { color: var(--muted); font-size: 12px; margin: 0; max-width: 720px; }

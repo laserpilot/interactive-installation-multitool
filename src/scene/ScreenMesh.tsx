@@ -6,7 +6,8 @@ import { f } from './scale';
 import { makeTestPattern } from './testPattern';
 
 export function ScreenMesh() {
-  const { diagonal, aspectW, aspectH, mountBottom, contentUrl } = useConfigStore();
+  const { diagonal, aspectW, aspectH, mountBottom, tiltDeg, mountType, contentUrl } =
+    useConfigStore();
   const size = sizeFromDiagonal(diagonal, aspectW, aspectH);
   const [uploaded, setUploaded] = useState<THREE.Texture | null>(null);
 
@@ -36,20 +37,34 @@ export function ScreenMesh() {
   const map = uploaded ?? testPattern;
   const w = f(size.width);
   const h = f(size.height);
-  const cy = f(mountBottom + size.height / 2);
+  const tiltRad = (tiltDeg * Math.PI) / 180;
+  const pivotY = f(mountBottom); // tilt about the bottom edge
 
   return (
-    <group position={[0, cy, 0.05]}>
-      {/* bezel — set back so its front face stays BEHIND the active plane */}
-      <mesh position={[0, 0, -0.05]}>
-        <boxGeometry args={[w + 0.12, h + 0.12, 0.1]} />
-        <meshStandardMaterial color="#0a0c10" />
-      </mesh>
-      {/* active area — in front of the bezel, unlit like a powered display */}
-      <mesh position={[0, 0, 0.02]}>
-        <planeGeometry args={[w, h]} />
-        <meshBasicMaterial map={map} toneMapped={false} />
-      </mesh>
+    <group>
+      {/* Pivot at the bottom edge, tilt the top toward the viewer, raise by h/2. */}
+      <group position={[0, pivotY, 0.05]} rotation={[-tiltRad, 0, 0]}>
+        <group position={[0, h / 2, 0]}>
+          {/* bezel — set back so its front face stays BEHIND the active plane */}
+          <mesh position={[0, 0, -0.05]}>
+            <boxGeometry args={[w + 0.12, h + 0.12, 0.1]} />
+            <meshStandardMaterial color="#0a0c10" />
+          </mesh>
+          {/* active area — in front of the bezel, unlit like a powered display */}
+          <mesh position={[0, 0, 0.02]}>
+            <planeGeometry args={[w, h]} />
+            <meshBasicMaterial map={map} toneMapped={false} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* Stand / podium: a simple base from the floor up to the bottom edge. */}
+      {mountType === 'stand' && pivotY > 0.05 && (
+        <mesh position={[0, pivotY / 2, -0.1]} castShadow>
+          <boxGeometry args={[Math.min(w, f(28)), pivotY, f(16)]} />
+          <meshStandardMaterial color="#5a6470" />
+        </mesh>
+      )}
     </group>
   );
 }

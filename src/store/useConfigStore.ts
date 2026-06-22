@@ -7,6 +7,9 @@ export type Mode = 'touch' | 'view';
 export type ResMode = 'pixels' | 'pitch';
 export type CameraView = 'orbit' | 'first-person';
 export type StageView = '3d' | '2d';
+export type AppTab = 'placement' | 'dvled';
+export type LedShape = 'square' | 'circle';
+export type MountType = 'wall' | 'stand';
 
 export interface ConfigState {
   // --- screen ---
@@ -14,6 +17,8 @@ export interface ConfigState {
   aspectW: number;
   aspectH: number;
   mountBottom: number; // in AFF (bottom edge)
+  mountType: MountType; // 'wall' flush, or 'stand'/podium
+  tiltDeg: number; // back-tilt of the screen; 0 = vertical
 
   // --- context ---
   mode: Mode;
@@ -27,11 +32,18 @@ export interface ConfigState {
 
   // --- ui ---
   units: Units;
+  appTab: AppTab;
   stageView: StageView;
   cameraView: CameraView;
   showReach: boolean;
   strictness: Strictness;
   contentUrl: string | null;
+
+  // --- dvLED preview ---
+  dvledDistance: number; // in (eye-to-wall for the preview tab)
+  dvledFov: number; // deg, horizontal field of view shown
+  fillFactor: number; // 0–1, LED emitter coverage of its cell
+  ledShape: LedShape;
 
   // --- actions ---
   set: <K extends keyof ConfigState>(key: K, value: ConfigState[K]) => void;
@@ -45,6 +57,8 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   aspectW: 16,
   aspectH: 9,
   mountBottom: 24,
+  mountType: 'wall',
+  tiltDeg: 0,
 
   mode: 'touch',
   viewingDistance: 96,
@@ -55,11 +69,17 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   pitchMm: 2.5,
 
   units: 'us',
+  appTab: 'placement',
   stageView: '3d',
   cameraView: 'orbit',
   showReach: true,
   strictness: 'realistic',
   contentUrl: null,
+
+  dvledDistance: 120, // 10 ft
+  dvledFov: 40,
+  fillFactor: 0.55,
+  ledShape: 'circle',
 
   set: (key, value) => set({ [key]: value } as Partial<ConfigState>),
   setContent: (url) => set({ contentUrl: url }),
@@ -74,6 +94,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     return verdict({
       size: sizeFromDiagonal(s.diagonal, s.aspectW, s.aspectH),
       mountBottom: s.mountBottom,
+      tiltDeg: s.tiltDeg,
       mode: s.mode,
       viewingDistance: s.viewingDistance,
       personaId: s.personaId,

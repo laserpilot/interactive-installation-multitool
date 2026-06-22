@@ -26,11 +26,19 @@ export function ReachEnvelope({
   touches: boolean;
 }) {
   const show = useConfigStore((s) => s.showReach);
+  const tiltDeg = useConfigStore((s) => s.tiltDeg);
   const dist = shoulder[2]; // shoulder distance from the wall (z, feet)
   const r = Math.sqrt(Math.max(0, armLen * armLen - dist * dist));
-  const canReachWall = r > 0.01;
-  const cx = shoulder[0];
+  // The flat wall-projected disc is only meaningful for a vertical screen. On a
+  // tilted screen, show just the touch point (which tracks the tilted plane).
+  const canReachWall = r > 0.01 && tiltDeg < 0.5;
+  // Center the reach zone on the body centerline (x=0) — where the figure and
+  // screen are centered — rather than the offset reaching shoulder.
+  const cx = 0;
   const cy = shoulder[1];
+  // On a vertical screen the dot sits just in front of the glass; on a tilt the
+  // hand already lands on the plane, so use its actual position.
+  const dot: P = tiltDeg < 0.5 ? [hand[0], hand[1], FRONT_Z] : hand;
 
   if (!show) return null;
 
@@ -62,8 +70,8 @@ export function ReachEnvelope({
         </>
       )}
 
-      {/* touch point marker, just in front of the screen */}
-      <mesh position={[hand[0], hand[1], FRONT_Z]}>
+      {/* touch point marker */}
+      <mesh position={dot}>
         <sphereGeometry args={[f(1.5), 14, 14]} />
         <meshBasicMaterial color={touches ? '#2ecc71' : '#e06c6c'} depthWrite={false} />
       </mesh>

@@ -10,6 +10,23 @@ export function makeTestPattern(
   aspectH: number,
   diagonalIn: number,
 ): THREE.CanvasTexture {
+  const tex = new THREE.CanvasTexture(
+    makeTestPatternCanvas(aspectW, aspectH, diagonalIn),
+  );
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+/**
+ * The raw canvas behind {@link makeTestPattern}, for consumers (e.g. the dvLED
+ * WebGL preview) that need a DOM image source rather than a Three texture.
+ */
+export function makeTestPatternCanvas(
+  aspectW: number,
+  aspectH: number,
+  diagonalIn: number,
+): HTMLCanvasElement {
   const LONG = 1024;
   const landscape = aspectW >= aspectH;
   const w = landscape ? LONG : Math.round((LONG * aspectW) / aspectH);
@@ -101,8 +118,5 @@ export function makeTestPattern(
   ctx.font = `${Math.round(Math.min(w, h) * 0.05)}px -apple-system, sans-serif`;
   ctx.fillText('TEST PATTERN', cx, cy + r * 0.45);
 
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
+  return canvas;
 }

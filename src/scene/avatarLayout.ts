@@ -1,4 +1,5 @@
 import type { Persona } from '../ergonomics/constants';
+import { screenGeometry } from '../ergonomics/screenGeometry';
 import { f } from './scale';
 
 export interface AvatarLayout {
@@ -25,16 +26,24 @@ export function avatarLayout(
   distanceIn: number,
   screenBottomIn: number,
   screenTopIn: number,
+  tiltDeg = 0,
 ): AvatarLayout {
   const z = f(distanceIn);
   const eye: [number, number, number] = [0, f(persona.eyeHeight), z];
   const shoulder: [number, number, number] = [f(7), f(persona.shoulderHeight), z];
 
-  // Pick a touch target: center of the screen∩reach overlap, else max reach.
+  // Pick a touch target height: center of the screen∩reach overlap, else max reach.
   const lo = Math.max(screenBottomIn, persona.reachLow);
   const hi = Math.min(screenTopIn, persona.reachHigh);
   const targetY = lo <= hi ? (lo + hi) / 2 : persona.reachHigh;
-  const target: [number, number, number] = [0, f(targetY), 0];
+  // Place it on the (possibly tilted) screen plane — its z recedes with tilt.
+  const geom = screenGeometry({
+    mountBottom: screenBottomIn,
+    height: screenTopIn - screenBottomIn,
+    tiltDeg,
+  });
+  const tp = geom.pointAtHeight(targetY);
+  const target: [number, number, number] = [f(tp[0]), f(tp[1]), f(tp[2])];
 
   // Arm reaches toward the target, capped at arm length.
   const armLen = f(0.42 * persona.statureHeight);

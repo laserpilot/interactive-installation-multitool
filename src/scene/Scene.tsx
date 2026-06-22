@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { PERSONAS } from '../ergonomics/constants';
 import { sizeFromDiagonal } from '../ergonomics/engine';
+import { screenGeometry } from '../ergonomics/screenGeometry';
 import { useConfigStore } from '../store/useConfigStore';
 import { AvatarSwitch } from './GltfAvatar';
 import { avatarLayout } from './avatarLayout';
@@ -71,13 +72,15 @@ function Wall({ width }: { width: number }) {
 }
 
 function CameraRig() {
-  const { cameraView, personaId, mode, viewingDistance, diagonal, aspectW, aspectH, mountBottom } =
+  const { cameraView, personaId, mode, viewingDistance, diagonal, aspectW, aspectH, mountBottom, tiltDeg } =
     useConfigStore();
   const persona = PERSONAS[personaId];
   const size = sizeFromDiagonal(diagonal, aspectW, aspectH);
   const distance = mode === 'touch' ? persona.touchDistance : viewingDistance;
-  const screenCenter = f(mountBottom + size.height / 2);
-  const L = avatarLayout(persona, distance, mountBottom, mountBottom + size.height);
+  const geom = screenGeometry({ mountBottom, height: size.height, tiltDeg });
+  const center: [number, number, number] = [0, f(geom.center[1]), f(geom.center[2])];
+  const screenCenter = center[1];
+  const L = avatarLayout(persona, distance, mountBottom, mountBottom + size.height, tiltDeg);
 
   const fpRef = useRef<THREE.PerspectiveCamera>(null);
 
@@ -86,10 +89,11 @@ function CameraRig() {
   useEffect(() => {
     if (cameraView === 'first-person' && fpRef.current) {
       fpRef.current.position.set(L.eye[0], L.eye[1], L.eye[2] - f(3));
-      fpRef.current.lookAt(0, screenCenter, 0);
+      fpRef.current.lookAt(center[0], center[1], center[2]);
       fpRef.current.updateProjectionMatrix();
     }
-  }, [cameraView, L.eye, screenCenter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraView, L.eye, center[1], center[2]]);
 
   if (cameraView === 'first-person') {
     // ~55° vertical FOV ≈ natural human perception, so an oversized screen
