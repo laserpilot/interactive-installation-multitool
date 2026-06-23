@@ -220,7 +220,10 @@ export function ProjectionScene() {
               <span>{FC_MIN_ACCEPTABLE}</span>
               <span>100</span>
               <span>{FC_DESIRABLE}</span>
-              <span>800 fc</span>
+              <span>800</span>
+            </div>
+            <div className="proj-legend-caption">
+              Surface brightness — foot-candles (dim → bright)
             </div>
           </div>
         </div>

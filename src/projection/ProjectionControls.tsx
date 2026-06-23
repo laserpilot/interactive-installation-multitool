@@ -61,6 +61,13 @@ export function ProjectionControls() {
   const widthMax = metric ? 1200 : 480;
   const step = metric ? 5 : 2;
 
+  // Manual entry for distance/width works in the user's big unit (ft or m), not
+  // raw inches, so typing an exact size is natural.
+  const bigUnit = metric ? 'm' : 'ft';
+  const bigVal = (inches: number) =>
+    metric ? Math.round(inches * 2.54) / 100 : Math.round((inches / 12) * 100) / 100;
+  const bigToIn = (v: number) => (metric ? (v * 100) / 2.54 : v * 12);
+
   const distVal = round(fromInches(s.projDistance, units));
   const widthVal = round(fromInches(s.projWidth, units));
   const pinDistance = s.projPin === 'distance';
@@ -143,11 +150,10 @@ export function ProjectionControls() {
       </Row>
 
       <Row label="Resolution">
-        <span className="aspect">
+        <span className="res">
           <input
             type="number"
             min={1}
-            className="num-sm"
             value={s.projResW}
             onChange={(e) => s.set('projResW', Number(e.target.value))}
           />
@@ -155,7 +161,6 @@ export function ProjectionControls() {
           <input
             type="number"
             min={1}
-            className="num-sm"
             value={s.projResH}
             onChange={(e) => s.set('projResH', Number(e.target.value))}
           />
@@ -186,7 +191,16 @@ export function ProjectionControls() {
           <div className="field">
             <div className="field-head">
               <span className="row-label">Throw distance</span>
-              <span className="num-readout">{fmtDist(s.projDistance, units)}</span>
+              <span className="num-entry">
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  value={bigVal(s.projDistance)}
+                  onChange={(e) => setDistance(bigToIn(Number(e.target.value)))}
+                />
+                <span className="unit">{bigUnit}</span>
+              </span>
             </div>
             <input
               className="slider"
@@ -207,7 +221,16 @@ export function ProjectionControls() {
           <div className="field">
             <div className="field-head">
               <span className="row-label">Image width</span>
-              <span className="num-readout">{fmtDist(s.projWidth, units)}</span>
+              <span className="num-entry">
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  value={bigVal(s.projWidth)}
+                  onChange={(e) => setWidth(bigToIn(Number(e.target.value)))}
+                />
+                <span className="unit">{bigUnit}</span>
+              </span>
             </div>
             <input
               className="slider"

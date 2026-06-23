@@ -211,3 +211,13 @@ button.ghost { width: 100%; margin-top: 6px; background: transparent; }
   display: flex; justify-content: space-between; margin-top: 3px;
   color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums;
 }
+.proj-legend-caption { margin-top: 4px; color: var(--muted); font-size: 11px; text-align: center; }
+
+/* resolution pair — wider than the aspect inputs so 4-digit values fit */
+.res { display: inline-flex; align-items: center; gap: 6px; }
+.res input { width: 68px; }
+
+/* inline number entry that sits where a readout would (label + unit) */
+.num-entry { display: inline-flex; align-items: center; gap: 5px; }
+.num-entry input { width: 72px; text-align: right; }
+.num-entry .unit { color: var(--muted); font-size: 12px; }

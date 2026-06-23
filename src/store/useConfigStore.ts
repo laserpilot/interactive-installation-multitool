@@ -24,6 +24,9 @@ export interface ConfigState {
 
   // --- table (horizontal touchscreen) ---
   tableHeight: number; // in AFF, surface height for the table tab
+  tableBezel: number; // in, border/frame width around the screen (0–12)
+  tableShowReach: boolean; // overlay the reach heatmap on the surface
+  tableSeats: number; // figures standing around the table (1–6)
 
   // --- context ---
   mode: Mode;
@@ -84,6 +87,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   tiltDeg: 0,
 
   tableHeight: DEFAULT_TABLE_HEIGHT,
+  tableBezel: 1.5,
+  tableShowReach: true,
+  tableSeats: 1,
 
   mode: 'touch',
   viewingDistance: 96,
