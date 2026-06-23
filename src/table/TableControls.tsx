@@ -30,6 +30,9 @@ export function TableControls() {
   const aspectW = useConfigStore((s) => s.aspectW);
   const aspectH = useConfigStore((s) => s.aspectH);
   const tableHeight = useConfigStore((s) => s.tableHeight);
+  const tableBezel = useConfigStore((s) => s.tableBezel);
+  const tableShowReach = useConfigStore((s) => s.tableShowReach);
+  const tableSeats = useConfigStore((s) => s.tableSeats);
   const personaId = useConfigStore((s) => s.personaId);
   const resMode = useConfigStore((s) => s.resMode);
   const horizontalPixels = useConfigStore((s) => s.horizontalPixels);
@@ -45,13 +48,17 @@ export function TableControls() {
       tableVerdict({
         size: sizeFromDiagonal(diagonal, aspectW, aspectH),
         tableHeight,
+        bezel: tableBezel,
         personaId,
         horizontalPixels: resMode === 'pixels' ? horizontalPixels : undefined,
         pitchMm: resMode === 'pitch' ? pitchMm : undefined,
         strictness,
       }),
-    [diagonal, aspectW, aspectH, tableHeight, personaId, resMode, horizontalPixels, pitchMm, strictness],
+    [diagonal, aspectW, aspectH, tableHeight, tableBezel, personaId, resMode, horizontalPixels, pitchMm, strictness],
   );
+
+  // Border slider bounds in the active unit (0–12" / 0–30 cm).
+  const bezVal = round(fromInches(tableBezel, units));
 
   // Surface-height slider bounds in the active unit (≈26–44" / 66–112 cm).
   const htMin = metric ? 66 : 26;
@@ -84,6 +91,26 @@ export function TableControls() {
           <p className="hint">
             ADA seated-accessible work surface is {TABLE_SURFACE_MIN}–{TABLE_SURFACE_MAX}" — a
             wheelchair can pull under in that range.
+          </p>
+        </div>
+
+        <div className="field">
+          <div className="field-head">
+            <span className="row-label">Border / frame</span>
+            <span className="num-readout">{fmtLen(tableBezel, units)}</span>
+          </div>
+          <input
+            className="slider"
+            type="range"
+            min={0}
+            max={metric ? 30 : 12}
+            step={metric ? 1 : 0.5}
+            value={bezVal}
+            onChange={(e) => set('tableBezel', toInches(Number(e.target.value), units))}
+          />
+          <p className="hint">
+            Frame around the screen. You stand at its outer edge, so a wide border
+            adds to the reach-across distance.
           </p>
         </div>
 
@@ -135,6 +162,26 @@ export function TableControls() {
             ))}
           </span>
         </Row>
+        <Row label="People around table">
+          <input
+            type="number"
+            min={1}
+            max={6}
+            value={tableSeats}
+            onChange={(e) => set('tableSeats', Math.max(1, Math.min(6, Math.round(Number(e.target.value)))))}
+          />
+        </Row>
+        <p className="hint">Up to 6 — two per long side, one per short side (3D view).</p>
+        <label className="row">
+          <span className="row-label">Show reach heatmap</span>
+          <span className="row-control">
+            <input
+              type="checkbox"
+              checked={tableShowReach}
+              onChange={(e) => set('tableShowReach', e.target.checked)}
+            />
+          </span>
+        </label>
       </div>
 
       <div className="panel verdict">
@@ -163,8 +210,12 @@ export function TableControls() {
         </ul>
 
         <dl className="metrics">
-          <Metric label="Reach across" value={fmtLen(v.depth, units)} />
+          <Metric label="Reach across" value={`${fmtLen(v.depth, units)}${v.bezel >= 0.5 ? ` + ${fmtLen(v.bezel, units)} border` : ''}`} />
           <Metric label="Reachable depth" value={`${Math.round(v.reach.reachableDepthFraction * 100)}%`} />
+          <Metric label="Reachable area" value={`${Math.round(v.usable.areaFraction * 100)}% of screen`} />
+          {v.usable.pxW != null && v.usable.pxD != null && (
+            <Metric label="Usable resolution" value={`~${v.usable.pxW.toLocaleString()} × ${v.usable.pxD.toLocaleString()} px`} />
+          )}
           <Metric label="Max reach from edge" value={fmtLen(v.reach.depthMax, units)} />
           <Metric label="ADA forward reach" value={v.ada.level === 'bad' ? 'over limit' : `${v.ada.allowableHigh}" high`} />
           <Metric label="Look-down angle" value={`${v.lookDownAngle.toFixed(0)}°`} />

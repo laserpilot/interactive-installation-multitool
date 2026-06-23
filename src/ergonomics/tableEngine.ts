@@ -40,11 +40,11 @@ const RANK: Record<VerdictLevel, number> = { good: 0, caution: 1, bad: 2 };
 // --- Forward functional reach across the surface ----------------------------
 
 export interface TableReach {
-  /** Max depth (in) the user can touch, measured from the near edge. */
+  /** Max horizontal depth (in) the user can touch from the table edge. */
   depthMax: number;
-  /** Fraction (0–1) of the surface depth that is physically reachable. */
+  /** Fraction (0–1) of the SCREEN depth within reach (accounts for the border). */
   reachableDepthFraction: number;
-  /** True if the whole surface depth is within reach. */
+  /** True if the whole screen (past the border) is within reach. */
   fullyReachable: boolean;
   /** Arm length used (in) — reach radius before the lean allowance. */
   armLen: number;
@@ -55,21 +55,28 @@ export interface TableReach {
  * envelope (r = √(reach² − offset²)) but with the VERTICAL drop from shoulder to
  * surface as the offset. The reach radius is arm length plus a torso-lean
  * allowance over the table edge.
+ *
+ * `bezel` is the border between the table's outer edge (where the user stands)
+ * and the screen, so the screen occupies depth [bezel, bezel + depth] — a wide
+ * frame pushes the reachable screen content further away.
  */
 export function tableReach(
   persona: Persona,
   tableHeight: number,
   depth: number,
+  bezel = 0,
 ): TableReach {
   const armLen = REACH_ARM_FRACTION * persona.statureHeight;
   const lean = persona.seated ? SEATED_LEAN_ALLOWANCE : STANDING_LEAN_ALLOWANCE;
   const reach = armLen + lean;
   const drop = persona.shoulderHeight - tableHeight; // vertical offset to surface
   const depthMax = Math.sqrt(Math.max(0, reach * reach - drop * drop));
+  // Reach into the screen, past the border, clamped to the screen depth.
+  const intoScreen = Math.max(0, Math.min(depthMax - bezel, depth));
   return {
     depthMax,
-    reachableDepthFraction: depth > 0 ? Math.min(1, depthMax / depth) : 1,
-    fullyReachable: depthMax >= depth,
+    reachableDepthFraction: depth > 0 ? intoScreen / depth : 1,
+    fullyReachable: depthMax >= bezel + depth,
     armLen,
   };
 }
@@ -132,9 +139,27 @@ export interface TableConfig {
   /** Surface height off the finished floor (in). */
   tableHeight: number;
   personaId: PersonaId;
+  /** Border/frame width between the table's outer edge and the screen (in). */
+  bezel?: number;
   horizontalPixels?: number;
   pitchMm?: number;
   strictness?: Strictness;
+}
+
+/** The portion of the screen a standing/seated user can comfortably reach. */
+export interface UsableArea {
+  /** Reachable depth into the screen along the centre line (in). */
+  depthIn: number;
+  /** Reachable width at the near screen edge (in). */
+  widthIn: number;
+  /** Fraction (0–1) of the screen AREA within reach. */
+  areaFraction: number;
+  /** Pixels per inch (square-pixel assumption); null if no pixel count given. */
+  ppi: number | null;
+  /** Approx usable bounding box and pixel count within reach. */
+  pxW: number | null;
+  pxD: number | null;
+  pxArea: number | null;
 }
 
 export interface TableVerdict {
@@ -142,15 +167,57 @@ export interface TableVerdict {
   reasons: VerdictReason[];
   /** Reach-across depth = the screen dimension lying away from the user (in). */
   depth: number;
+  /** Border between the user's edge and the screen (in). */
+  bezel: number;
   reach: TableReach;
   ada: AdaObstruction;
   seated: SeatedClearance;
+  /** The reachable region of the screen (for the heatmap + designer readout). */
+  usable: UsableArea;
   /** Eye→surface-center distance for the look-down view (in). */
   effectiveDistance: number;
   /** Depression angle below horizontal to the surface center (deg). */
   lookDownAngle: number;
   pixels: PixelMetrics;
   persona: Persona;
+}
+
+/**
+ * The reachable region of the screen: points within `depthMax` horizontal reach
+ * of the user at the table edge, the screen offset back by the border `bezel`.
+ * Area is integrated (the region is a circular segment, not a rectangle).
+ */
+export function usableReachArea(
+  width: number,
+  depth: number,
+  bezel: number,
+  depthMax: number,
+  horizontalPixels?: number,
+): UsableArea {
+  const depthIn = Math.max(0, Math.min(depthMax - bezel, depth));
+  const halfAtNear = Math.sqrt(Math.max(0, depthMax * depthMax - bezel * bezel));
+  const widthIn = Math.min(width, 2 * halfAtNear);
+
+  const N = 200;
+  const dd = depth / N;
+  let area = 0;
+  for (let i = 0; i < N; i++) {
+    const dn = bezel + (i + 0.5) * dd; // depth from the user's edge
+    const half = Math.sqrt(Math.max(0, depthMax * depthMax - dn * dn));
+    area += 2 * Math.min(half, width / 2) * dd;
+  }
+  const screenArea = width * depth;
+  const areaFraction = screenArea > 0 ? Math.min(1, area / screenArea) : 0;
+  const ppi = horizontalPixels && width > 0 ? horizontalPixels / width : null;
+  return {
+    depthIn,
+    widthIn,
+    areaFraction,
+    ppi,
+    pxW: ppi ? Math.round(widthIn * ppi) : null,
+    pxD: ppi ? Math.round(depthIn * ppi) : null,
+    pxArea: ppi ? Math.round(area * ppi * ppi) : null,
+  };
 }
 
 /** Grade a reachable fraction against the strictness thresholds (shared rule). */
@@ -167,16 +234,21 @@ export function tableVerdict(cfg: TableConfig): TableVerdict {
   // The screen lies face-up; its "height" dimension lies away from the user, so
   // it is the depth reached across. Its "width" runs along the near edge.
   const depth = cfg.size.height;
+  const bezel = cfg.bezel ?? 0;
+  // Distance from the user's standing edge (table's outer edge) to the far edge
+  // of the screen — what reach and ADA are actually measured against.
+  const reachDepth = bezel + depth;
   const reasons: VerdictReason[] = [];
 
   const geom = tableGeometry({ tableHeight: cfg.tableHeight, depth });
 
   // 1. Forward functional reach across the surface ---------------------------
-  const reach = tableReach(persona, cfg.tableHeight, depth);
+  const reach = tableReach(persona, cfg.tableHeight, depth, bezel);
+  const borderNote = bezel >= 0.5 ? ` (incl. ${bezel.toFixed(0)}" border)` : '';
   if (reach.fullyReachable) {
     reasons.push({
       level: 'good',
-      text: `${persona.label} can reach the whole ${depth.toFixed(0)}" depth from the edge.`,
+      text: `${persona.label} can reach the whole ${reachDepth.toFixed(0)}" across${borderNote}.`,
     });
   } else {
     const pctOut = Math.round((1 - reach.reachableDepthFraction) * 100);
@@ -184,30 +256,30 @@ export function tableVerdict(cfg: TableConfig): TableVerdict {
       level: gradeReach(reach.reachableDepthFraction, strictness),
       text: `${persona.label} can only reach ~${reach.depthMax.toFixed(
         0,
-      )}" across — the far ${pctOut}% of the surface is out of reach from one side.`,
+      )}" across${borderNote} — the far ${pctOut}% of the screen is out of reach from one side.`,
     });
   }
 
   // 2. ADA 308.3.2 forward reach over the edge -------------------------------
-  const ada = adaReachOverObstruction(depth);
+  const ada = adaReachOverObstruction(reachDepth);
   if (ada.level === 'good') {
     reasons.push({
       level: 'good',
-      text: `Reach-across depth (${depth.toFixed(0)}") is within ADA forward reach over an obstruction.`,
+      text: `Reach-across depth (${reachDepth.toFixed(0)}")${borderNote} is within ADA forward reach over an obstruction.`,
     });
   } else if (ada.level === 'caution') {
     reasons.push({
       level: 'caution',
-      text: `At ${depth.toFixed(
+      text: `At ${reachDepth.toFixed(
         0,
-      )}" deep, ADA 308.3.2 caps the high reach at ${ada.allowableHigh}" — keep controls toward the near edge.`,
+      )}" deep${borderNote}, ADA 308.3.2 caps the high reach at ${ada.allowableHigh}" — keep controls toward the near edge.`,
     });
   } else {
     reasons.push({
       level: 'bad',
-      text: `${depth.toFixed(
+      text: `${reachDepth.toFixed(
         0,
-      )}" is past the 25" ADA limit for reach over an obstruction — far-edge content is unreachable for seated users.`,
+      )}"${borderNote} is past the 25" ADA limit for reach over an obstruction — far-edge content is unreachable for seated users.`,
     });
   }
 
@@ -269,6 +341,8 @@ export function tableVerdict(cfg: TableConfig): TableVerdict {
     }
   }
 
+  const usable = usableReachArea(cfg.size.width, depth, bezel, reach.depthMax, cfg.horizontalPixels);
+
   const level = reasons.reduce<VerdictLevel>(
     (worst, r) => (RANK[r.level] > RANK[worst] ? r.level : worst),
     'good',
@@ -278,9 +352,11 @@ export function tableVerdict(cfg: TableConfig): TableVerdict {
     level,
     reasons,
     depth,
+    bezel,
     reach,
     ada,
     seated,
+    usable,
     effectiveDistance: eyeToCenter,
     lookDownAngle,
     pixels,

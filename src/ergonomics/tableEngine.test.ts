@@ -6,6 +6,7 @@ import {
   tableReach,
   tableSeatedClearance,
   tableVerdict,
+  usableReachArea,
   type TableConfig,
 } from './tableEngine';
 
@@ -104,5 +105,49 @@ describe('tableVerdict — overall is the worst reason', () => {
     const v = tableVerdict(base({}));
     expect(v.lookDownAngle).toBeGreaterThan(0);
     expect(v.lookDownAngle).toBeLessThan(90);
+  });
+});
+
+describe('border (bezel) counts against reach', () => {
+  const adult = PERSONAS.adult;
+
+  it('a wide border pushes the far screen edge out of reach', () => {
+    const near = tableReach(adult, 34, 18, 0);
+    const far = tableReach(adult, 34, 18, 12);
+    expect(near.fullyReachable).toBe(true); // 18" reachable bare
+    expect(far.fullyReachable).toBe(false); // 12" border + 18" = 30" > 29.7" reach
+    expect(far.reachableDepthFraction).toBeLessThan(near.reachableDepthFraction);
+  });
+
+  it('the verdict measures ADA depth as border + screen depth', () => {
+    // 18" screen is ADA-fine bare, but a 9" border pushes it to 27" → over limit.
+    const bare = tableVerdict({ size: size(24, 18), tableHeight: 32, personaId: 'adult' });
+    const framed = tableVerdict({ size: size(24, 18), tableHeight: 32, personaId: 'adult', bezel: 9 });
+    expect(bare.ada.level).toBe('good');
+    expect(framed.ada.depth).toBeCloseTo(27, 5);
+    expect(framed.ada.level).toBe('bad');
+  });
+});
+
+describe('usableReachArea — reachable region of the screen', () => {
+  it('a fully reachable screen is ~100% usable', () => {
+    // adult depthMax ≈ 29.7"; an 18"-deep, 24"-wide screen fits inside.
+    const u = usableReachArea(24, 18, 0, 29.7, 1920);
+    expect(u.areaFraction).toBeGreaterThan(0.95);
+    expect(u.ppi).toBeCloseTo(1920 / 24, 5);
+    expect(u.pxD).toBeGreaterThan(0);
+  });
+
+  it('a deep screen is only partly usable, and the border shrinks it', () => {
+    const noBorder = usableReachArea(53, 32, 0, 29.7, 3840);
+    const withBorder = usableReachArea(53, 32, 6, 29.7, 3840);
+    expect(noBorder.areaFraction).toBeLessThan(1);
+    expect(withBorder.areaFraction).toBeLessThan(noBorder.areaFraction);
+  });
+
+  it('omits pixel figures when no pixel count is given', () => {
+    const u = usableReachArea(24, 18, 0, 29.7);
+    expect(u.ppi).toBeNull();
+    expect(u.pxArea).toBeNull();
   });
 });

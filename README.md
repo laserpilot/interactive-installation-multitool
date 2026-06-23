@@ -1,4 +1,4 @@
-# Screen Placement Simulator
+# Installation Screen Multitool
 
 A browser tool for AV / experiential installers to sanity-check **touchscreen and
 display placement** before anything gets mounted. Set a screen size, mount height,

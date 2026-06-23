@@ -40,7 +40,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <strong>Screen Placement Simulator</strong>
+          <strong>Installation Screen Multitool</strong>
           <span className="tag">{tag}</span>
         </div>
         <div className="topbar-controls">
@@ -49,7 +49,13 @@ export default function App() {
               className={isPlacement ? 'on' : ''}
               onClick={() => set('appTab', 'placement')}
             >
-              Placement
+              Monitor Placement
+            </button>
+            <button
+              className={isTable ? 'on' : ''}
+              onClick={() => set('appTab', 'table')}
+            >
+              Table Monitor
             </button>
             <button
               className={isDvled ? 'on' : ''}
@@ -62,12 +68,6 @@ export default function App() {
               onClick={() => set('appTab', 'projection')}
             >
               Projection
-            </button>
-            <button
-              className={isTable ? 'on' : ''}
-              onClick={() => set('appTab', 'table')}
-            >
-              Table
             </button>
           </span>
           {(isPlacement || isTable) && (

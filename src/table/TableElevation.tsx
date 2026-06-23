@@ -37,17 +37,21 @@ export function TableElevation() {
   const svgRef = useRef<SVGSVGElement>(null);
 
   const tableH = s.tableHeight;
-  const depth = size.height; // dimension lying away from the user = reach-across
+  const depth = size.height; // screen dimension lying away from the user
+  const bezel = s.tableBezel; // border between the user's edge and the screen
+  const reachSpan = bezel + depth; // user's edge → far screen edge
+  const outerDepth = depth + 2 * bezel; // full tabletop depth
   const v = s.appTab === 'table'
     ? tableVerdict({
         size,
         tableHeight: tableH,
+        bezel,
         personaId: s.personaId,
         horizontalPixels: s.resMode === 'pixels' ? s.horizontalPixels : undefined,
         pitchMm: s.resMode === 'pitch' ? s.pitchMm : undefined,
         strictness: s.strictness,
       })
-    : tableVerdict({ size, tableHeight: tableH, personaId: s.personaId });
+    : tableVerdict({ size, tableHeight: tableH, bezel, personaId: s.personaId });
 
   const eyeH = persona.eyeHeight;
   const shoulderH = persona.shoulderHeight;
@@ -56,8 +60,9 @@ export function TableElevation() {
   // Reach across the surface (mirrors tableReach): horizontal reach from the edge.
   const armLen = REACH_ARM_FRACTION * persona.statureHeight;
   const reach = armLen + (persona.seated ? SEATED_LEAN_ALLOWANCE : STANDING_LEAN_ALLOWANCE);
-  const handDepth = Math.min(depth, v.reach.depthMax); // where the hand lands on the surface
-  const touchesFar = depth <= v.reach.depthMax;
+  // Hand lands on the surface at depthMax from the edge, capped at the far edge.
+  const handDepth = Math.min(reachSpan, v.reach.depthMax);
+  const touchesFar = reachSpan <= v.reach.depthMax;
 
   // viewBox layout (inches).
   const leftPad = 40; // room for body / chair / vertical dim
@@ -66,9 +71,9 @@ export function TableElevation() {
   const mB = 32;
   const mR = 12;
   const PANEL = 86;
-  const edgeX = leftPad; // near edge of the table (depth 0)
+  const edgeX = leftPad; // outer edge of the table where the user stands (depth 0)
   const Hc = Math.max(tableH, eyeH, persona.statureHeight) + 10;
-  const Dc = depth + rightPad;
+  const Dc = outerDepth + rightPad;
   const VBW = edgeX + Dc + PANEL + mR;
   const VBH = mT + Hc + mB;
   const groundY = mT + Hc;
@@ -77,9 +82,9 @@ export function TableElevation() {
   const sw = { major: 0.7, thin: 0.35, hair: 0.18 };
   const FS = 4.6;
 
-  // ADA reach-over-obstruction zones along the surface depth.
-  const adaShallow = Math.min(depth, ADA_OBSTRUCTED_SHALLOW_DEPTH);
-  const adaDeep = Math.min(depth, ADA_OBSTRUCTED_DEEP_DEPTH);
+  // ADA reach-over-obstruction zones, measured from the user's edge.
+  const adaShallow = Math.min(reachSpan, ADA_OBSTRUCTED_SHALLOW_DEPTH);
+  const adaDeep = Math.min(reachSpan, ADA_OBSTRUCTED_DEEP_DEPTH);
 
   function exportSvg() {
     const el = svgRef.current;
@@ -135,34 +140,41 @@ export function TableElevation() {
           knee/toe clearance
         </text>
 
-        {/* table legs + top slab */}
-        <rect x={X(depth) - 2.5} y={Y(tableH)} width={2.5} height={tableH} fill="#5a6470" opacity={0.5} stroke="#3a444f" strokeWidth={sw.thin} />
-        <rect x={X(0)} y={Y(tableH) - 1.5} width={depth} height={1.6} fill="#7c8794" opacity={0.6} />
+        {/* table top slab (full width incl. border) + far leg */}
+        <rect x={X(outerDepth) - 2.5} y={Y(tableH)} width={2.5} height={tableH} fill="#5a6470" opacity={0.5} stroke="#3a444f" strokeWidth={sw.thin} />
+        <rect x={X(0)} y={Y(tableH) - 1.5} width={outerDepth} height={1.6} fill="#7c8794" opacity={0.6} />
+        {/* border / frame (the part of the top that isn't screen) */}
+        {bezel >= 0.5 && (
+          <>
+            <rect x={X(0)} y={Y(tableH) - 1.5} width={bezel} height={1.6} fill="#3a4048" />
+            <rect x={X(bezel + depth)} y={Y(tableH) - 1.5} width={bezel} height={1.6} fill="#3a4048" />
+          </>
+        )}
 
-        {/* ADA reach-over-obstruction zones (a band just above the surface) */}
+        {/* ADA reach-over-obstruction zones (band above the surface, from the edge) */}
         <rect x={X(0)} y={Y(tableH) - 7} width={adaShallow} height={5} fill={GREEN} opacity={0.16} />
         {adaDeep > adaShallow && (
           <rect x={X(adaShallow)} y={Y(tableH) - 7} width={adaDeep - adaShallow} height={5} fill={AMBER} opacity={0.18} />
         )}
-        {depth > adaDeep && (
-          <rect x={X(adaDeep)} y={Y(tableH) - 7} width={depth - adaDeep} height={5} fill={RED} opacity={0.16} />
+        {reachSpan > adaDeep && (
+          <rect x={X(adaDeep)} y={Y(tableH) - 7} width={reachSpan - adaDeep} height={5} fill={RED} opacity={0.16} />
         )}
-        {depth > ADA_OBSTRUCTED_SHALLOW_DEPTH && (
+        {reachSpan > ADA_OBSTRUCTED_SHALLOW_DEPTH && (
           <ADATick x={X(adaShallow)} yTop={Y(tableH) - 7} yBot={Y(tableH)} label={`${ADA_OBSTRUCTED_SHALLOW_DEPTH}"`} fs={FS} />
         )}
-        {depth > ADA_OBSTRUCTED_DEEP_DEPTH && (
+        {reachSpan > ADA_OBSTRUCTED_DEEP_DEPTH && (
           <ADATick x={X(adaDeep)} yTop={Y(tableH) - 7} yBot={Y(tableH)} label={`${ADA_OBSTRUCTED_DEEP_DEPTH}" max`} fs={FS} />
         )}
 
-        {/* surface (edge-on) */}
-        <line x1={X(0)} y1={Y(tableH)} x2={X(depth)} y2={Y(tableH)} stroke={ACCENT} strokeWidth={2.6} strokeLinecap="round" />
-        <text x={X(depth) + 4} y={Y(tableH) - 2} fontSize={FS} fill={ACCENT} style={haloStyle}>
+        {/* active screen (edge-on), offset back by the border */}
+        <line x1={X(bezel)} y1={Y(tableH)} x2={X(bezel + depth)} y2={Y(tableH)} stroke={ACCENT} strokeWidth={2.6} strokeLinecap="round" />
+        <text x={X(outerDepth) + 4} y={Y(tableH) - 2} fontSize={FS} fill={ACCENT} style={haloStyle}>
           {`${Math.round(s.diagonal)}" table`}
         </text>
 
-        {/* line of sight (look-down) from eye to surface center */}
-        <line x1={X(0)} y1={Y(eyeH)} x2={X(depth / 2)} y2={Y(tableH)} stroke={EYE} strokeWidth={sw.thin} strokeDasharray="3 2" />
-        <text x={X(depth / 2) + 1} y={Y(tableH) - 8} fontSize={FS * 0.78} fill={EYE}>
+        {/* line of sight (look-down) from eye to screen center */}
+        <line x1={X(0)} y1={Y(eyeH)} x2={X(bezel + depth / 2)} y2={Y(tableH)} stroke={EYE} strokeWidth={sw.thin} strokeDasharray="3 2" />
+        <text x={X(bezel + depth / 2) + 1} y={Y(tableH) - 8} fontSize={FS * 0.78} fill={EYE}>
           {`look-down ${v.lookDownAngle.toFixed(0)}°`}
         </text>
 
@@ -180,9 +192,9 @@ export function TableElevation() {
           </text>
         )}
 
-        {/* dimensions: surface height (vertical) + reach-across depth (horizontal) */}
+        {/* dimensions: surface height (vertical) + screen depth (horizontal) */}
         <VDim x={edgeX - 10} y0={groundY} y1={Y(tableH)} label={fmtLen(tableH, units)} fs={FS} />
-        <HDim y={groundY + 14} x0={X(0)} x1={X(depth)} label={fmtLen(depth, units)} fs={FS} />
+        <HDim y={groundY + 14} x0={X(bezel)} x1={X(bezel + depth)} label={fmtLen(depth, units)} fs={FS} />
 
         <SpecBlock
           x={edgeX + Dc + 4}
@@ -190,10 +202,12 @@ export function TableElevation() {
           rows={[
             ['Type', 'Table (flat)'],
             ['Screen', `${Math.round(s.diagonal)}"  ${s.aspectW}:${s.aspectH}`],
-            ['Reach across', fmtLen(depth, units)],
+            ['Screen depth', fmtLen(depth, units)],
+            ['Border', fmtLen(bezel, units)],
             ['Surface height', fmtLen(tableH, units)],
             ['Max reach', fmtLen(v.reach.depthMax, units)],
             ['Reachable', `${Math.round(v.reach.reachableDepthFraction * 100)}%`],
+            ['Usable area', `${Math.round(v.usable.areaFraction * 100)}%`],
             ['ADA reach', v.ada.level === 'bad' ? 'over 25" limit' : `${v.ada.allowableHigh}" high`],
             ['Seated access', v.seated.surfaceInAdaRange ? 'yes (28–34")' : 'no'],
             ['Viewer', persona.label],
