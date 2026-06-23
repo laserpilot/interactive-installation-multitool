@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { sizeFromDiagonal } from '../ergonomics/engine';
 import { useConfigStore } from '../store/useConfigStore';
 import { ContentUpload } from '../ui/ContentUpload';
 import { fmtDist, fromInches, lenUnit, toInches } from '../ui/units';
@@ -23,6 +25,18 @@ function round(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+/** Reduce a width:height (in any unit) to a tidy integer ratio, e.g. 2:1, 16:9. */
+function reduceRatio(w: number, h: number): [number, number] {
+  const a = Math.round(w);
+  const b = Math.round(h);
+  const g = gcd(a, b) || 1;
+  return [a / g, b / g];
+}
+
 export function DvLedControls() {
   const s = useConfigStore();
   const units = s.units;
@@ -33,6 +47,19 @@ export function DvLedControls() {
   const distMin = metric ? 30 : 12;
   const distMax = metric ? 2400 : 960;
   const distVal = round(fromInches(s.dvledDistance, units));
+
+  // Size can be driven by the diagonal or by raw width × height.
+  const [sizeMode, setSizeMode] = useState<'diagonal' | 'wh'>('diagonal');
+  const wall = sizeFromDiagonal(s.diagonal, s.aspectW, s.aspectH);
+  // Set physical size from width/height (in): store the diagonal + use the raw
+  // dimensions as the aspect, so the ratio is exact.
+  const setWH = (wIn: number, hIn: number) => {
+    if (wIn <= 0 || hIn <= 0) return;
+    s.set('diagonal', Math.hypot(wIn, hIn));
+    const [aw, ah] = reduceRatio(wIn, hIn);
+    s.set('aspectW', aw);
+    s.set('aspectH', ah);
+  };
 
   return (
     <div className="panel">
@@ -60,32 +87,77 @@ export function DvLedControls() {
         </select>
       </Row>
 
-      <Row label={`Diagonal (${u})`}>
-        <input
-          type="number"
-          min={1}
-          value={round(fromInches(s.diagonal, units))}
-          onChange={(e) => s.set('diagonal', toInches(Number(e.target.value), units))}
-        />
-      </Row>
-
-      <Row label="Aspect">
-        <span className="aspect">
-          <input
-            type="number"
-            min={1}
-            value={s.aspectW}
-            onChange={(e) => s.set('aspectW', Number(e.target.value))}
-          />
-          <span>:</span>
-          <input
-            type="number"
-            min={1}
-            value={s.aspectH}
-            onChange={(e) => s.set('aspectH', Number(e.target.value))}
-          />
+      <Row label="Size by">
+        <span className="seg sm">
+          <button
+            className={sizeMode === 'diagonal' ? 'on' : ''}
+            onClick={() => setSizeMode('diagonal')}
+          >
+            Diagonal
+          </button>
+          <button
+            className={sizeMode === 'wh' ? 'on' : ''}
+            onClick={() => setSizeMode('wh')}
+          >
+            W × H
+          </button>
         </span>
       </Row>
+
+      {sizeMode === 'diagonal' ? (
+        <>
+          <Row label={`Diagonal (${u})`}>
+            <input
+              type="number"
+              min={1}
+              value={round(fromInches(s.diagonal, units))}
+              onChange={(e) => s.set('diagonal', toInches(Number(e.target.value), units))}
+            />
+          </Row>
+
+          <Row label="Aspect">
+            <span className="aspect">
+              <input
+                type="number"
+                min={1}
+                value={round(s.aspectW)}
+                onChange={(e) => s.set('aspectW', Number(e.target.value))}
+              />
+              <span>:</span>
+              <input
+                type="number"
+                min={1}
+                value={round(s.aspectH)}
+                onChange={(e) => s.set('aspectH', Number(e.target.value))}
+              />
+            </span>
+          </Row>
+        </>
+      ) : (
+        <Row label={`Width × Height (${u})`}>
+          <span className="aspect">
+            <input
+              type="number"
+              min={1}
+              style={{ width: 66 }}
+              value={round(fromInches(wall.width, units))}
+              onChange={(e) =>
+                setWH(toInches(Number(e.target.value), units), wall.height)
+              }
+            />
+            <span>×</span>
+            <input
+              type="number"
+              min={1}
+              style={{ width: 66 }}
+              value={round(fromInches(wall.height, units))}
+              onChange={(e) =>
+                setWH(wall.width, toInches(Number(e.target.value), units))
+              }
+            />
+          </span>
+        </Row>
+      )}
 
       <Row label="Pixel pitch (mm)">
         <input
@@ -180,30 +252,6 @@ export function DvLedControls() {
         />
         Show person + scale bar
       </label>
-      {s.dvledShowScale && (
-        <Row label="Figure">
-          <span className="seg sm">
-            <button
-              className={s.dvledScalePersona === 'adult' ? 'on' : ''}
-              onClick={() => s.set('dvledScalePersona', 'adult')}
-            >
-              Adult
-            </button>
-            <button
-              className={s.dvledScalePersona === 'child' ? 'on' : ''}
-              onClick={() => s.set('dvledScalePersona', 'child')}
-            >
-              Child
-            </button>
-            <button
-              className={s.dvledScalePersona === 'wheelchair' ? 'on' : ''}
-              onClick={() => s.set('dvledScalePersona', 'wheelchair')}
-            >
-              Seated
-            </button>
-          </span>
-        </Row>
-      )}
 
       <h2>Content</h2>
       <ContentUpload />
