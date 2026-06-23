@@ -98,6 +98,12 @@ export function DvLedPreview() {
         </div>
         <dl className="dvled-metrics">
           <div>
+            <dt>Panel size (W × H)</dt>
+            <dd>
+              {fmtDist(size.width, units)} × {fmtDist(size.height, units)}
+            </dd>
+          </div>
+          <div>
             <dt>Native resolution</dt>
             <dd>
               {Math.round(m.nativeCols).toLocaleString()} ×{' '}

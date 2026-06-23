@@ -48,8 +48,12 @@ export function ScaleOverlay(props: ScaleOverlayProps) {
 
   const h = statureIn * pxPerIn;
   const w = h * 0.27; // shoulder-ish width
-  // Place just left of the wall content; clamp inside the frame.
-  const cx = Math.max(w * 0.6 + 6, wallLeftX - w * 0.7);
+  // Stand the figure in the surround, just left of the wall — never over it.
+  // When zoomed in close enough that there's no surround to hold the figure,
+  // we drop it (a person beside an off-frame wall edge says nothing about scale).
+  const gap = 10;
+  const cx = wallLeftX - gap - w / 2;
+  const hasRoom = cx - w / 2 >= 2;
   const yAt = (f: number) => footY - f * h;
 
   // Proportions as a fraction of stature, measured up from the feet.
@@ -76,32 +80,36 @@ export function ScaleOverlay(props: ScaleOverlayProps) {
 
   return (
     <svg className="dvled-overlay-svg" width={cssW} height={cssH} viewBox={`0 0 ${cssW} ${cssH}`}>
-      <g style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.55))' }}>
-        {/* legs */}
-        {!props.seated && (
-          <>
-            <rect x={cx - legW - w * 0.02} y={yAt(hipF)} width={legW} height={hipF * h} rx={legW * 0.4} fill={figFill} stroke={figStroke} strokeWidth={1} />
-            <rect x={cx + w * 0.02} y={yAt(hipF)} width={legW} height={hipF * h} rx={legW * 0.4} fill={figFill} stroke={figStroke} strokeWidth={1} />
-          </>
-        )}
-        {props.seated && (
-          /* simple seated base: thighs forward + chair line */
-          <rect x={cx - w * 0.5} y={yAt(0.02)} width={w} height={h * 0.16} rx={6} fill={figFill} stroke={figStroke} strokeWidth={1} />
-        )}
-        {/* torso */}
-        <path d={torso} fill={figFill} stroke={figStroke} strokeWidth={1} strokeLinejoin="round" />
-        {/* head */}
-        <circle cx={cx} cy={headCY} r={headR} fill={figFill} stroke={figStroke} strokeWidth={1} />
-      </g>
+      {hasRoom && (
+        <>
+          <g style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.55))' }}>
+            {/* legs */}
+            {!props.seated && (
+              <>
+                <rect x={cx - legW - w * 0.02} y={yAt(hipF)} width={legW} height={hipF * h} rx={legW * 0.4} fill={figFill} stroke={figStroke} strokeWidth={1} />
+                <rect x={cx + w * 0.02} y={yAt(hipF)} width={legW} height={hipF * h} rx={legW * 0.4} fill={figFill} stroke={figStroke} strokeWidth={1} />
+              </>
+            )}
+            {props.seated && (
+              /* simple seated base: thighs forward + chair line */
+              <rect x={cx - w * 0.5} y={yAt(0.02)} width={w} height={h * 0.16} rx={6} fill={figFill} stroke={figStroke} strokeWidth={1} />
+            )}
+            {/* torso */}
+            <path d={torso} fill={figFill} stroke={figStroke} strokeWidth={1} strokeLinejoin="round" />
+            {/* head */}
+            <circle cx={cx} cy={headCY} r={headR} fill={figFill} stroke={figStroke} strokeWidth={1} />
+          </g>
 
-      {/* eye sight line across the frame */}
-      <line x1={0} y1={eyeY} x2={cssW} y2={eyeY} stroke="rgba(78,161,255,0.45)" strokeWidth={1} strokeDasharray="6 6" />
-      <text x={cx + w * 0.7} y={eyeY - 5} className="dvled-overlay-label">eye line</text>
+          {/* eye sight line across the frame */}
+          <line x1={0} y1={eyeY} x2={cssW} y2={eyeY} stroke="rgba(78,161,255,0.45)" strokeWidth={1} strokeDasharray="6 6" />
+          <text x={cx + w * 0.7} y={eyeY - 5} className="dvled-overlay-label">eye line</text>
 
-      {/* figure height label */}
-      <text x={cx} y={yAt(1) - 8} textAnchor="middle" className="dvled-overlay-label">
-        {props.figureLabel}
-      </text>
+          {/* figure height label */}
+          <text x={cx} y={yAt(1) - 8} textAnchor="middle" className="dvled-overlay-label">
+            {props.figureLabel}
+          </text>
+        </>
+      )}
 
       {/* scale bar */}
       <g>
