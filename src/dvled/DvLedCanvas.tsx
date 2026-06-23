@@ -55,7 +55,6 @@ uniform float u_invFill;     // wall span / wall  (= 1 / wallFillFraction)
 uniform float u_fill;        // emitter coverage 0–1
 uniform int u_shape;         // 0 = square, 1 = circle
 
-const vec3 GAP = vec3(0.012);      // unlit substrate between LEDs
 const vec3 SURROUND = vec3(0.04);  // off-wall area when zoomed out
 const int N = 4;                   // N×N supersamples per pixel
 
@@ -92,14 +91,21 @@ void main() {
 
   vec3 col = smoothCol;
   if (structure > 0.002) {
-    float emit = 1.0 / max(u_fill, 0.05);
+    // Energy-preserving cell: the emitter brightens by 1/fill to compensate for
+    // the black gap, and any overflow it can't hold (highlights clipping at
+    // white) spills into the gap. The cell average stays equal to the content
+    // at every fill value, so fill changes the screen-door *texture*, never the
+    // wall's overall brightness — a sparser pitch looks dottier, not darker.
+    float fillA = clamp(u_fill, 0.02, 0.95);
     vec3 acc = vec3(0.0);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
         vec2 o = (vec2(float(i), float(j)) + 0.5) / float(N) - 0.5;
         vec2 c = cell + o.x * dCx + o.y * dCy;
         vec3 led = textureLod(u_content, (floor(c) + 0.5) / u_cells, 0.0).rgb;
-        acc += mix(GAP, min(led * emit, vec3(1.0)), mask(fract(c) - 0.5));
+        vec3 dot = min(led / fillA, vec3(1.0));
+        vec3 gap = (led - fillA * dot) / (1.0 - fillA);
+        acc += mix(gap, dot, mask(fract(c) - 0.5));
       }
     }
     col = mix(smoothCol, acc / float(N * N), structure);

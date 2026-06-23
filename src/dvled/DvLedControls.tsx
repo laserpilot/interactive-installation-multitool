@@ -3,6 +3,7 @@ import { sizeFromDiagonal } from '../ergonomics/engine';
 import { useConfigStore } from '../store/useConfigStore';
 import { ContentUpload } from '../ui/ContentUpload';
 import { fmtDist, fromInches, lenUnit, toInches } from '../ui/units';
+import { emitterWidthForPitch, pitchFillFraction } from './optics';
 
 // LED-wall presets — diagonal in inches + a typical fine/coarse pitch.
 const PRESETS: { label: string; diagonal: number; aspectW: number; aspectH: number; pitch: number }[] = [
@@ -60,6 +61,10 @@ export function DvLedControls() {
     s.set('aspectW', aw);
     s.set('aspectH', ah);
   };
+
+  // Fill derived from the pitch (used when "Fill from pitch" is on).
+  const lockedFill = pitchFillFraction(s.pitchMm);
+  const emitterMm = emitterWidthForPitch(s.pitchMm);
 
   return (
     <div className="panel">
@@ -209,10 +214,21 @@ export function DvLedControls() {
 
       <h2>Panel look</h2>
 
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={s.dvledLockFill}
+          onChange={(e) => s.set('dvledLockFill', e.target.checked)}
+        />
+        Fill from pitch (realistic)
+      </label>
+
       <div className="field">
         <div className="field-head">
           <span className="row-label">Fill factor</span>
-          <span className="num-readout">{Math.round(s.fillFactor * 100)}%</span>
+          <span className="num-readout">
+            {Math.round((s.dvledLockFill ? lockedFill : s.fillFactor) * 100)}%
+          </span>
         </div>
         <input
           className="slider"
@@ -220,10 +236,15 @@ export function DvLedControls() {
           min={0.1}
           max={0.95}
           step={0.05}
-          value={s.fillFactor}
+          disabled={s.dvledLockFill}
+          value={s.dvledLockFill ? lockedFill : s.fillFactor}
           onChange={(e) => s.set('fillFactor', Number(e.target.value))}
         />
-        <p className="hint">How much of each pixel the emitter covers. Lower = wider black grid (stronger screen-door up close).</p>
+        <p className="hint">
+          {s.dvledLockFill
+            ? `Derived from the pitch — emitter ≈ ${emitterMm.toFixed(1)} mm in the ${s.pitchMm} mm cell. The diode grows slower than the pitch, so coarse pitches show more black gap. Brightness stays constant.`
+            : 'How much of each pixel the emitter covers. Lower = wider black grid (stronger screen-door up close).'}
+        </p>
       </div>
 
       <Row label="LED shape">

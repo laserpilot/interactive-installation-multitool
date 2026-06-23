@@ -98,6 +98,25 @@ export function dvledMetrics(
   };
 }
 
+/**
+ * Realistic emitter (LED package) width for a given pitch, in mm. The die/
+ * package grows far slower than the pitch — a P10 wall is ~4 mm of emitter in a
+ * 10 mm cell, not a 10 mm pixel — so we model it sub-linearly and bound the
+ * resulting coverage. This is a sensible default across SMD product lines; real
+ * fill varies by tech (sparse outdoor DIP, near-gapless COB), so it's overridable.
+ */
+export function emitterWidthForPitch(pitchMm: number): number {
+  if (pitchMm <= 0) return 0;
+  return 0.75 * Math.pow(pitchMm, 0.73);
+}
+
+/** Area fill fraction (emitter ÷ cell, squared) implied by the pitch. */
+export function pitchFillFraction(pitchMm: number): number {
+  if (pitchMm <= 0) return 0.3;
+  const ratio = Math.min(0.85, Math.max(0.25, emitterWidthForPitch(pitchMm) / pitchMm));
+  return ratio * ratio;
+}
+
 /** Inches → metres, for readouts. */
 export function inToM(inches: number): number {
   return inches / IN_PER_M;

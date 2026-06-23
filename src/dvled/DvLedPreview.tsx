@@ -6,7 +6,7 @@ import { useConfigStore } from '../store/useConfigStore';
 import { fmtDist } from '../ui/units';
 import { DvLedCanvas } from './DvLedCanvas';
 import { ScaleOverlay } from './ScaleOverlay';
-import { dvledMetrics, mToIn, type Perceived } from './optics';
+import { dvledMetrics, mToIn, pitchFillFraction, type Perceived } from './optics';
 
 /** Human-friendly height label, e.g. 5'9" or 175 cm. */
 function fmtHeight(inches: number, metric: boolean): string {
@@ -56,6 +56,7 @@ export function DvLedPreview() {
   }, []);
 
   const persona = PERSONAS[s.dvledScalePersona];
+  const effectiveFill = s.dvledLockFill ? pitchFillFraction(s.pitchMm) : s.fillFactor;
 
   return (
     <div className="dvled-stage">
@@ -65,7 +66,7 @@ export function DvLedPreview() {
           cols={m.nativeCols}
           rows={m.nativeRows}
           wallFillFraction={m.wallFillFraction}
-          fillFactor={s.fillFactor}
+          fillFactor={effectiveFill}
           shape={s.ledShape}
           aspect={size.width / size.height}
           onResize={onCanvasResize}

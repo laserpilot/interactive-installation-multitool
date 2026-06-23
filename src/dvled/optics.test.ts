@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dvledMetrics } from './optics';
+import { dvledMetrics, emitterWidthForPitch, pitchFillFraction } from './optics';
 import { sizeFromDiagonal } from '../ergonomics/engine';
 
 // A 12 ft (165") 16:9 LED wall, ~2.5 mm pitch — the README's cautionary example.
@@ -34,6 +34,22 @@ describe('dvledMetrics', () => {
     expect(close.viewSpanWidthIn).toBeLessThan(back.viewSpanWidthIn);
     expect(close.fillsFrame).toBe(true); // zoomed into a slice
     expect(back.fillsFrame).toBe(false); // whole wall now sits inside the FOV
+  });
+
+  it('emitter grows sub-linearly with pitch (a 10mm pitch is not a 10mm pixel)', () => {
+    expect(emitterWidthForPitch(10)).toBeLessThan(5); // ~4 mm, not 10
+    // doubling the pitch less than doubles the emitter
+    expect(emitterWidthForPitch(10)).toBeLessThan(2 * emitterWidthForPitch(5));
+    expect(emitterWidthForPitch(0)).toBe(0);
+  });
+
+  it('fill fraction falls as pitch coarsens, and is bounded', () => {
+    const fine = pitchFillFraction(1.5);
+    const coarse = pitchFillFraction(10);
+    expect(fine).toBeGreaterThan(coarse);
+    // coverage ratio clamps to [0.25, 0.85] ⇒ area to [~0.06, ~0.72]
+    expect(pitchFillFraction(0.5)).toBeLessThanOrEqual(0.85 * 0.85 + 1e-9);
+    expect(pitchFillFraction(40)).toBeGreaterThanOrEqual(0.25 * 0.25 - 1e-9);
   });
 
   it('retina distance scales with pitch (~1 arcmin rule)', () => {

@@ -50,7 +50,8 @@ export interface ConfigState {
   // --- dvLED preview ---
   dvledDistance: number; // in (eye-to-wall for the preview tab)
   dvledFov: number; // deg, horizontal field of view shown
-  fillFactor: number; // 0–1, LED emitter coverage of its cell
+  fillFactor: number; // 0–1, LED emitter coverage of its cell (manual override)
+  dvledLockFill: boolean; // derive fill from pitch instead of the manual value
   ledShape: LedShape;
   dvledShowScale: boolean; // overlay a to-scale figure + scale bar
   dvledScalePersona: PersonaId; // which body the scale figure represents
@@ -110,6 +111,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   dvledDistance: 120, // 10 ft
   dvledFov: 40,
   fillFactor: 0.55,
+  dvledLockFill: true,
   ledShape: 'circle',
   dvledShowScale: true,
   dvledScalePersona: 'adult',
