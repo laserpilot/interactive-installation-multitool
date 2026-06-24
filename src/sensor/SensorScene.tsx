@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import { PERSONAS } from '../ergonomics/constants';
 import { useConfigStore } from '../store/useConfigStore';
 import { fmtDist } from '../ui/units';
-import { f } from '../scene/scale';
 import { SensorAvatar } from './SensorAvatar';
 import { SensorFrustum } from './SensorFrustum';
 import { TrackableZone } from './TrackableZone';
