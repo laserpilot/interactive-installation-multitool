@@ -237,6 +237,111 @@ export function frustumGeometry(p: FrustumParams): FrustumGeometry {
   };
 }
 
+/** Slide a landed frustum (lens + corners) sideways along world-x by `dx` feet. */
+export function translateGeometryX(g: FrustumGeometry, dx: number): FrustumGeometry {
+  const t = (p: Vec3): Vec3 => [p[0] + dx, p[1], p[2]];
+  return {
+    lens: t(g.lens),
+    topLeft: t(g.topLeft),
+    topRight: t(g.topRight),
+    bottomRight: t(g.bottomRight),
+    bottomLeft: t(g.bottomLeft),
+    imageCenterFt: g.imageCenterFt,
+  };
+}
+
+// --- horizontal edge-blended array (1×N) ---
+
+export interface ArrayLayout {
+  /** Projector count (≥1). */
+  count: number;
+  /** Overlap between neighbours as a fraction of one image width, 0–1. */
+  overlapFrac: number;
+  /** One projector's image width, feet. */
+  singleWidthFt: number;
+  /** Overlap strip width, feet (= overlapFrac × singleWidthFt). */
+  overlapWidthFt: number;
+  /** Combined wall width, feet: N·W − (N−1)·O. */
+  totalWidthFt: number;
+  /** World-x of each projector's image centre, array centred on x=0. */
+  centersX: number[];
+  /** World-x of each blend seam (midpoint between neighbours). */
+  seamsX: number[];
+}
+
+/**
+ * Lay N identical images side by side, each overlapping its neighbour by
+ * `overlapPct`%, centred on x=0. Centre-to-centre spacing is one image minus the
+ * overlap, so the run packs to `N·W − (N−1)·O` total width.
+ */
+export function arrayLayout(
+  count: number,
+  overlapPct: number,
+  singleWidthFt: number,
+): ArrayLayout {
+  const n = Math.max(1, Math.round(count));
+  const overlapFrac = Math.min(0.95, Math.max(0, overlapPct / 100));
+  const W = singleWidthFt;
+  const O = overlapFrac * W;
+  const step = W - O; // centre-to-centre spacing
+  const totalWidthFt = n * W - (n - 1) * O;
+  const firstCenter = -totalWidthFt / 2 + W / 2;
+  const centersX = Array.from({ length: n }, (_, i) => firstCenter + i * step);
+  const seamsX = Array.from({ length: n - 1 }, (_, i) =>
+    (centersX[i] + centersX[i + 1]) / 2,
+  );
+  return {
+    count: n,
+    overlapFrac,
+    singleWidthFt: W,
+    overlapWidthFt: O,
+    totalWidthFt,
+    centersX,
+    seamsX,
+  };
+}
+
+export interface ArrayMetrics {
+  count: number;
+  totalWidthFt: number;
+  heightFt: number;
+  totalAreaSqFt: number;
+  /** Combined native horizontal pixels: N·resW − (N−1)·overlapPx. */
+  combinedResW: number;
+  /** Hot overlap illuminance before the blend curve evens it out: 2× single. */
+  blendFc: number;
+  /** Sum of every projector's effective lumens. */
+  systemLumens: number;
+  /** Combined horizontal pixels per foot across the whole image. */
+  hPpf: number;
+}
+
+/**
+ * Roll one projector's metrics up to the whole array. After edge blending the
+ * usable on-screen brightness is the SINGLE-projector fc (the blend curve tapers
+ * each overlap so the seam matches its neighbours), so the band/photometry stay
+ * `m`'s; the array only changes total size, combined resolution, hot-seam
+ * brightness, and system lumens.
+ */
+export function projectionArrayMetrics(
+  m: ProjectionMetrics,
+  layout: ArrayLayout,
+  resW: number,
+): ArrayMetrics {
+  const n = layout.count;
+  const combinedResW = Math.round(resW * (n - (n - 1) * layout.overlapFrac));
+  return {
+    count: n,
+    totalWidthFt: layout.totalWidthFt,
+    heightFt: m.heightFt,
+    totalAreaSqFt: layout.totalWidthFt * m.heightFt,
+    combinedResW,
+    blendFc: m.footCandles * 2,
+    systemLumens: m.effectiveLumens * n,
+    hPpf: layout.totalWidthFt > 0 ? combinedResW / layout.totalWidthFt : 0,
+  };
+}
+
 // --- photometry across the landed quad ---
 
 /** Bilinear point inside the quad. u: 0=left→1=right, v: 0=top→1=bottom. */

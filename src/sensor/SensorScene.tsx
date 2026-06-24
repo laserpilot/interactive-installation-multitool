@@ -1,24 +1,24 @@
 import { Canvas } from '@react-three/fiber';
-import { Grid, Line, OrbitControls, PerspectiveCamera, Text } from '@react-three/drei';
+import { Billboard, Grid, Line, OrbitControls, PerspectiveCamera, Text } from '@react-three/drei';
 import { useMemo } from 'react';
+import { PERSONAS } from '../ergonomics/constants';
 import { useConfigStore } from '../store/useConfigStore';
 import { fmtDist } from '../ui/units';
-import { ProjectionFigure } from '../projection/ProjectionFigure';
+import { f } from '../scene/scale';
+import { SensorAvatar } from './SensorAvatar';
 import { SensorFrustum } from './SensorFrustum';
-import { SensorSurface } from './SensorSurface';
+import { TrackableZone } from './TrackableZone';
 import {
-  BAND_LABEL,
   BAND_TONE,
-  coverageColor,
+  bodyCoverage,
+  confColor,
+  coneRays,
   ftFromIn,
   inFromFt,
   rampGradientCss,
-  sensorGeometry,
-  sensorMetrics,
+  trackableField,
   type SensorParams,
 } from './sensorMath';
-
-const LINE = '#10202e';
 
 function Lights() {
   return (
@@ -52,28 +52,49 @@ function Floor() {
   );
 }
 
-/** Faint vertical wall plane the sensor is mounted on (z=0) or aimed at. */
 function WallPlane({ z, height }: { z: number; height: number }) {
   return (
     <mesh position={[0, height / 2, z]}>
       <planeGeometry args={[60, height]} />
-      <meshStandardMaterial
-        color="#8d96a2"
-        transparent
-        opacity={0.35}
-        side={2}
-      />
+      <meshStandardMaterial color="#8d96a2" transparent opacity={0.35} side={2} />
     </mesh>
   );
 }
 
-function avg4(a: number, b: number, c: number, d: number) {
-  return (a + b + c + d) / 4;
+/** A small mounting plate on the ceiling so an overhead sensor reads as hung,
+ *  not stuck to a mid-wall. Kept small + flat so it doesn't occlude the scene. */
+function CeilingPlate({ y }: { y: number }) {
+  return (
+    <mesh position={[0, y + 0.06, 0]}>
+      <boxGeometry args={[3, 0.12, 3]} />
+      <meshStandardMaterial color="#8d96a2" transparent opacity={0.5} />
+    </mesh>
+  );
+}
+
+const LINE = '#10202e';
+type V3 = [number, number, number];
+const midpt = (a: V3, b: V3): V3 => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+
+/** A dimension line with a camera-facing label at its midpoint. */
+function DimLine({ a, b, label }: { a: V3; b: V3; label: string }) {
+  const m = midpt(a, b);
+  return (
+    <group>
+      <Line points={[a, b]} color={LINE} lineWidth={1.5} transparent opacity={0.8} />
+      <Billboard position={[m[0], m[1] + 0.25, m[2]]}>
+        <Text fontSize={0.34} color={LINE} outlineWidth={0.015} outlineColor="#ffffff" anchorX="center" anchorY="middle">
+          {label}
+        </Text>
+      </Billboard>
+    </group>
+  );
 }
 
 export function SensorScene() {
   const s = useConfigStore();
   const units = s.units;
+  const persona = PERSONAS[s.sensorPersona];
 
   const params: SensorParams = useMemo(
     () => ({
@@ -84,9 +105,9 @@ export function SensorScene() {
       hFovDeg: s.sensorHFov,
       vFovDeg: s.sensorVFov,
       minRangeIn: s.sensorMinRange,
+      confNearIn: s.sensorConfNear,
+      confFarIn: s.sensorConfFar,
       maxRangeIn: s.sensorMaxRange,
-      target: s.sensorTarget,
-      wallDistIn: s.sensorWallDist,
     }),
     [
       s.sensorMount,
@@ -96,36 +117,38 @@ export function SensorScene() {
       s.sensorHFov,
       s.sensorVFov,
       s.sensorMinRange,
+      s.sensorConfNear,
+      s.sensorConfFar,
       s.sensorMaxRange,
-      s.sensorTarget,
-      s.sensorWallDist,
     ],
   );
 
-  const geom = useMemo(() => sensorGeometry(params), [params]);
-  const metrics = useMemo(() => sensorMetrics(params), [params]);
-  const tone = BAND_TONE[metrics.band];
-  const bandColor = coverageColor(metrics.nearFt, true, ftFromIn(params.minRangeIn), ftFromIn(params.maxRangeIn));
+  const px = ftFromIn(s.sensorPersonX);
+  const pz = ftFromIn(s.sensorPersonZ);
 
+  const rays = useMemo(() => coneRays(params), [params]);
+  const field = useMemo(
+    () => trackableField(params, persona, 56),
+    [params, persona],
+  );
+  const cover = useMemo(
+    () => bodyCoverage(params, persona, px, pz),
+    [params, persona, px, pz],
+  );
+
+  const tone = BAND_TONE[cover.band];
+  const chest = cover.parts.find((p) => p.name === 'chest');
   const sensorY = ftFromIn(params.mountAffIn);
-  const cx = avg4(geom.topLeft[0], geom.topRight[0], geom.bottomRight[0], geom.bottomLeft[0]);
-  const cz = avg4(geom.topLeft[2], geom.topRight[2], geom.bottomRight[2], geom.bottomLeft[2]);
-  const cy = avg4(geom.topLeft[1], geom.topRight[1], geom.bottomRight[1], geom.bottomLeft[1]);
 
-  // Camera framing scaled to the setup.
-  const sizeFt = Math.max(metrics.spanW, metrics.spanD, sensorY, 8);
+  // Frame the sensor + person + zone.
+  const sizeFt = Math.max(ftFromIn(params.maxRangeIn), Math.hypot(px, pz) + 4, sensorY, 8);
   const camX = -(sizeFt * 0.95 + 4);
   const camY = Math.max(sensorY + 4, sizeFt * 0.85);
-  const camZ = Math.max(cz, 0) + sizeFt * 1.05 + 6;
-  const target: [number, number, number] = [cx * 0.5, Math.max(2, sensorY * 0.4), cz * 0.5 + 1];
-
-  // Footprint figure sits at the patch centre on the floor (scale reference).
-  const showFigure = s.sensorShowFigure && params.target === 'floor' && metrics.reachesSurface;
+  const camZ = Math.max(pz, 0) + sizeFt * 1.05 + 6;
+  const target: [number, number, number] = [px * 0.5, Math.max(2, sensorY * 0.4), pz * 0.5 + 1];
 
   const fmtArea = (sqft: number) =>
-    units === 'metric'
-      ? `${(sqft * 0.092903).toFixed(1)} m²`
-      : `${Math.round(sqft)} ft²`;
+    units === 'metric' ? `${(sqft * 0.092903).toFixed(1)} m²` : `${Math.round(sqft)} ft²`;
 
   return (
     <div className="proj-stage">
@@ -140,56 +163,31 @@ export function SensorScene() {
           <OrbitControls target={target} maxPolarAngle={Math.PI / 2} />
           <Lights />
           <Floor />
-          {/* mount wall behind ceiling/wall sensors; facing wall for the target */}
-          {params.mount !== 'floor' && <WallPlane z={-0.02} height={Math.max(sensorY + 2, 10)} />}
-          {params.target === 'wall' && (
-            <WallPlane z={ftFromIn(params.wallDistIn)} height={Math.max(metrics.spanD + 2, 10)} />
+          {params.mount === 'wall' && <WallPlane z={-0.02} height={Math.max(sensorY + 2, 10)} />}
+          {params.mount === 'ceiling' && <CeilingPlate y={sensorY} />}
+          {s.sensorTarget === 'wall' && (
+            <WallPlane z={ftFromIn(s.sensorWallDist)} height={10} />
           )}
 
-          <SensorSurface geom={geom} params={params} />
-          <SensorFrustum geom={geom} color={bandColor} />
-          {showFigure && <ProjectionFigure pos={[cx, cz]} />}
+          {s.sensorShowZone && <TrackableZone field={field} />}
+          <SensorFrustum rays={rays} units={units} showLabels={s.sensorShowMeasurements} />
+          <SensorAvatar params={params} persona={persona} x={px} z={pz} />
 
-          {/* mount-height dimension up the back wall */}
-          {params.mount !== 'floor' && (
+          {/* spatial reference: sensor height, slant distance to the body, floor offset */}
+          {s.sensorShowMeasurements && (
             <>
-              <Line
-                points={[
-                  [-sizeFt * 0.6, 0, 0.02],
-                  [-sizeFt * 0.6, sensorY, 0.02],
-                ]}
-                color={LINE}
-                lineWidth={2}
-              />
-              <Text
-                position={[-sizeFt * 0.6 - 0.5, sensorY / 2, 0.06]}
-                rotation={[0, 0, Math.PI / 2]}
-                fontSize={0.32}
-                color={LINE}
-                outlineWidth={0.014}
-                outlineColor="#ffffff"
-                anchorX="center"
-                anchorY="middle"
-              >
-                {fmtDist(params.mountAffIn, units)} mount
-              </Text>
+              <DimLine a={[0, 0, 0]} b={[0, sensorY, 0]} label={`${fmtDist(params.mountAffIn, units)} high`} />
+              {chest && (
+                <DimLine
+                  a={[0, sensorY, 0]}
+                  b={chest.point}
+                  label={`${fmtDist(inFromFt(chest.distFt), units)} to body`}
+                />
+              )}
+              {Math.hypot(px, pz) > 1 && (
+                <DimLine a={[0, 0, 0]} b={[px, 0, pz]} label={`${fmtDist(inFromFt(Math.hypot(px, pz)), units)} on floor`} />
+              )}
             </>
-          )}
-
-          {/* covered band: near → far distance label at the patch centre */}
-          {metrics.reachesSurface && (
-            <Text
-              position={[cx, cy + 0.1, cz]}
-              rotation={params.target === 'floor' ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}
-              fontSize={0.4}
-              color={LINE}
-              outlineWidth={0.016}
-              outlineColor="#ffffff"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {fmtDist(inFromFt(metrics.spanW), units)} × {fmtDist(inFromFt(metrics.spanD), units)}
-            </Text>
           )}
         </Canvas>
       </div>
@@ -198,48 +196,47 @@ export function SensorScene() {
         <div className="proj-top">
           <div className={`dvled-verdict ${tone}`}>
             <span className="dvled-dot" />
-            {BAND_LABEL[metrics.band]}
-            <span className="dvled-sub">
-              {Math.round(metrics.fracOnSurface * 100)}% of the view lands on the{' '}
-              {params.target} in range
-            </span>
+            {cover.label}
+            <span className="dvled-sub">{cover.detail}</span>
           </div>
           <div className="proj-legend">
             <div className="proj-legend-bar" style={{ background: rampGradientCss() }} />
             <div className="proj-legend-ticks">
-              <span>near {fmtDist(params.minRangeIn, units)}</span>
-              <span>far {fmtDist(params.maxRangeIn, units)}</span>
+              <span>blind</span>
+              <span>noisy</span>
+              <span>reliable</span>
             </div>
             <div className="proj-legend-caption">
-              Usable depth — near → far. Red = too close (blind), gray = out of range / off-surface.
+              Tracking confidence — {SENSING_LABEL[s.sensorMode]} mode. Gray = outside the field of view.
             </div>
           </div>
         </div>
 
+        {/* per-body-part coverage */}
+        <div className="sensor-parts">
+          {cover.parts.map((p) => (
+            <span key={p.name} className="sensor-part">
+              <span
+                className="sensor-part-dot"
+                style={{ background: confColor(p.conf, p.inFOV) }}
+              />
+              {p.name}
+            </span>
+          ))}
+        </div>
+
         <dl className="dvled-metrics">
           <div>
-            <dt>Footprint</dt>
+            <dt>Reliable range</dt>
             <dd>
-              {metrics.reachesSurface
-                ? `${fmtDist(inFromFt(metrics.spanW), units)} × ${fmtDist(inFromFt(metrics.spanD), units)}`
-                : '—'}
+              {fmtDist(params.confNearIn, units)} – {fmtDist(params.confFarIn, units)}
             </dd>
           </div>
           <div>
-            <dt>Covered area</dt>
-            <dd>{metrics.reachesSurface ? fmtArea(metrics.areaSqFt) : '—'}</dd>
-          </div>
-          <div>
-            <dt>Covered band</dt>
+            <dt>Hard limits</dt>
             <dd>
-              {metrics.reachesSurface
-                ? `${fmtDist(inFromFt(metrics.nearFt), units)} – ${fmtDist(inFromFt(metrics.farFt), units)}`
-                : 'out of range'}
+              {fmtDist(params.minRangeIn, units)} – {fmtDist(params.maxRangeIn, units)}
             </dd>
-          </div>
-          <div>
-            <dt>In-range coverage</dt>
-            <dd>{Math.round(metrics.fracOnSurface * 100)}%</dd>
           </div>
           <div>
             <dt>Field of view</dt>
@@ -248,23 +245,39 @@ export function SensorScene() {
             </dd>
           </div>
           <div>
-            <dt>Usable range</dt>
+            <dt>Trackable floor zone</dt>
+            <dd>{fmtArea(field.coveredAreaSqFt)}</dd>
+          </div>
+          <div>
+            <dt>Body confidence</dt>
             <dd>
-              {fmtDist(params.minRangeIn, units)} – {fmtDist(params.maxRangeIn, units)}
+              {cover.fracCoreInFov < 1
+                ? 'partly out of frame'
+                : `${Math.round(cover.minCoreConf * 100)}%`}
+            </dd>
+          </div>
+          <div>
+            <dt>Person at</dt>
+            <dd>
+              {fmtDist(inFromFt(Math.hypot(px, pz)), units)} ·{' '}
+              {persona.label.split(' ')[0]}
             </dd>
           </div>
         </dl>
         <p className="dvled-note">
-          {params.mount === 'ceiling'
-            ? 'Overhead'
-            : params.mount === 'wall'
-              ? 'Wall'
-              : 'Floor'}{' '}
-          mount, aimed at the {params.target}. Footprint is the sensing cone clipped
-          to usable depth — the part that floats off the {params.target} is beyond
-          max range. Tilt and pan to chase coverage; raise the mount to widen it.
+          Move the person (forward / side) to spot-check coverage; the floor map shows
+          everywhere a standing {persona.label.split(' ')[0].toLowerCase()} would be
+          tracked. The reliable band is tighter than the sensor's spec range because{' '}
+          {SENSING_LABEL[s.sensorMode].toLowerCase()} tracking degrades before max depth.
         </p>
       </div>
     </div>
   );
 }
+
+const SENSING_LABEL: Record<string, string> = {
+  skeletal: 'Skeletal',
+  hand: 'Hand / gesture',
+  pointcloud: 'Point cloud',
+  presence: 'Presence',
+};
