@@ -184,6 +184,45 @@ export function ProjectionControls() {
         </>
       )}
 
+      <Row label="Blended array">
+        <span className="seg sm">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              className={s.projArrayCount === n ? 'on' : ''}
+              onClick={() => s.set('projArrayCount', n)}
+            >
+              {n === 1 ? 'Off' : `${n}×`}
+            </button>
+          ))}
+        </span>
+      </Row>
+
+      {s.projArrayCount > 1 && (
+        <>
+          <div className="field">
+            <div className="field-head">
+              <span className="row-label">Overlap</span>
+              <span className="num-readout">{s.projArrayOverlapPct}%</span>
+            </div>
+            <input
+              className="slider"
+              type="range"
+              min={0}
+              max={50}
+              step={1}
+              value={s.projArrayOverlapPct}
+              onChange={(e) => s.set('projArrayOverlapPct', Number(e.target.value))}
+            />
+          </div>
+          <p className="hint">
+            Projectors side by side, each overlapping its neighbour. Total width ={' '}
+            {s.projArrayCount}× one image minus the overlaps; the seams run ~2× bright
+            until an edge-blend curve tapers them.
+          </p>
+        </>
+      )}
+
       <Row label="Aspect">
         <span className="aspect">
           <input

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { DEFAULT_TABLE_HEIGHT, type PersonaId, type Strictness } from '../ergonomics/constants';
 import { sizeFromDiagonal, verdict, type Verdict } from '../ergonomics/engine';
-import { mToIn, type SensorMount, type SensorTarget } from '../sensor/sensorMath';
+import { mToIn, type SensingMode, type SensorMount, type SensorTarget } from '../sensor/sensorMath';
 
 export type Units = 'us' | 'metric';
 export type Mode = 'touch' | 'view';
@@ -66,6 +66,8 @@ export interface ConfigState {
   projLumens: number; // single-projector rated lumens
   projectorCount: number; // stacking multiplier
   projStackEff: number; // 0–1, brightness kept per added stacked unit
+  projArrayCount: number; // horizontal edge-blended array: projectors side by side
+  projArrayOverlapPct: number; // % of one image width that neighbours overlap
   projAspectW: number;
   projAspectH: number;
   projResW: number; // native projector pixels
@@ -87,11 +89,19 @@ export interface ConfigState {
   sensorYawDeg: number; // pan aim about vertical
   sensorHFov: number; // horizontal field of view, deg
   sensorVFov: number; // vertical field of view, deg
-  sensorMinRange: number; // in, closest usable depth
-  sensorMaxRange: number; // in, farthest usable depth
-  sensorTarget: SensorTarget; // surface coverage lands on: floor or facing wall
+  sensorHwMax: number; // in, the sensor hardware max depth (reseeds mode windows)
+  sensorMode: SensingMode; // sensing task — sets the confidence window
+  sensorMinRange: number; // in, hard near cutoff (blind below)
+  sensorConfNear: number; // in, near edge of the high-confidence sweet spot
+  sensorConfFar: number; // in, far edge of the high-confidence sweet spot
+  sensorMaxRange: number; // in, hard far cutoff (confidence reaches 0)
+  sensorTarget: SensorTarget; // optional context wall to draw: floor or facing wall
   sensorWallDist: number; // in, distance to the facing wall (target='wall')
-  sensorShowFigure: boolean; // show a to-scale person at the footprint centre
+  sensorPersona: PersonaId; // which body the placed person represents
+  sensorPersonX: number; // in, person's side offset from the sensor axis
+  sensorPersonZ: number; // in, person's forward distance into the room
+  sensorShowZone: boolean; // overlay the trackable floor zone
+  sensorShowMeasurements: boolean; // overlay dimension lines + range labels
 
   // --- actions ---
   set: <K extends keyof ConfigState>(key: K, value: ConfigState[K]) => void;
@@ -144,6 +154,8 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   projLumens: 4000,
   projectorCount: 1,
   projStackEff: 0.9, // each added stacked unit contributes ~90% of its lumens
+  projArrayCount: 1, // single image until widened into an array
+  projArrayOverlapPct: 20, // typical edge-blend overlap
   projAspectW: 16,
   projAspectH: 9,
   projResW: 1920,
@@ -158,18 +170,26 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   projShowFigure: true,
   projSurfaceView: 'heatmap',
 
-  // Azure Kinect (NFOV) on a 9 ft ceiling aimed straight down at the floor.
+  // Azure Kinect (NFOV) on a 9 ft ceiling aimed straight down, skeletal tracking.
   sensorMount: 'ceiling',
   sensorMountAff: 108, // 9 ft
   sensorPitchDeg: -90,
   sensorYawDeg: 0,
   sensorHFov: 75,
   sensorVFov: 65,
-  sensorMinRange: mToIn(0.5), // ~0.5 m
-  sensorMaxRange: mToIn(3.86), // ~3.86 m
+  sensorHwMax: mToIn(3.86), // Azure NFOV hardware depth max
+  sensorMode: 'skeletal',
+  sensorMinRange: mToIn(0.5), // skeletal window seeded from the mode
+  sensorConfNear: mToIn(1.2),
+  sensorConfFar: mToIn(3.5),
+  sensorMaxRange: mToIn(3.86),
   sensorTarget: 'floor',
   sensorWallDist: 240, // 20 ft
-  sensorShowFigure: true,
+  sensorPersona: 'adult',
+  sensorPersonX: 0,
+  sensorPersonZ: 24, // 2 ft forward of the sensor axis
+  sensorShowZone: true,
+  sensorShowMeasurements: true,
 
   set: (key, value) => set({ [key]: value } as Partial<ConfigState>),
   setContent: (url) => set({ contentUrl: url }),
