@@ -1,8 +1,15 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { DEFAULT_TABLE_HEIGHT, type PersonaId, type Strictness } from '../ergonomics/constants';
 import { sizeFromDiagonal, verdict, type Verdict } from '../ergonomics/engine';
 import { mToIn, type SensingMode, type SensorMount, type SensorTarget } from '../sensor/sensorMath';
 import { MOUNT_DEFAULTS as SPK_MOUNT_DEFAULTS, type SpeakerUnit, type UseCase } from '../speaker/speakerMath';
+import { dataFields, validateAndApply, withoutContent } from './snapshot';
+
+/** Bumped only when a field's meaning changes incompatibly. Stamped into every
+ *  saved snapshot (localStorage, JSON file, share link). Restore is best-effort
+ *  and additive, so this is informational, never a hard gate. */
+export const SCHEMA_VERSION = 1;
 
 export type Units = 'us' | 'metric';
 export type Mode = 'touch' | 'view';
@@ -128,7 +135,14 @@ export interface ConfigState {
   getVerdict: () => Verdict;
 }
 
-export const useConfigStore = create<ConfigState>((set, get) => ({
+/** The serializable fields only — the store minus its action functions. This is
+ *  what gets saved/restored across localStorage, JSON files, and share links. */
+export type ConfigData = Omit<
+  ConfigState,
+  'set' | 'setContent' | 'applyRecommendedMount' | 'getVerdict'
+>;
+
+export const INITIAL: ConfigData = {
   diagonal: 65,
   aspectW: 16,
   aspectH: 9,
@@ -229,27 +243,49 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   speakerCoverageView: 'spl',
   speakerShowField: true,
   speakerShowMeasurements: true,
+};
 
-  set: (key, value) => set({ [key]: value } as Partial<ConfigState>),
-  setContent: (url) => set({ contentUrl: url }),
+export const useConfigStore = create<ConfigState>()(
+  persist(
+    (set, get) => ({
+      ...INITIAL,
 
-  applyRecommendedMount: () => {
-    const v = get().getVerdict();
-    set({ mountBottom: Math.round(v.recommendedMountBottom * 10) / 10 });
-  },
+      set: (key, value) => set({ [key]: value } as Partial<ConfigState>),
+      setContent: (url) => set({ contentUrl: url }),
 
-  getVerdict: () => {
-    const s = get();
-    return verdict({
-      size: sizeFromDiagonal(s.diagonal, s.aspectW, s.aspectH),
-      mountBottom: s.mountBottom,
-      tiltDeg: s.tiltDeg,
-      mode: s.mode,
-      viewingDistance: s.viewingDistance,
-      personaId: s.personaId,
-      horizontalPixels: s.resMode === 'pixels' ? s.horizontalPixels : undefined,
-      pitchMm: s.resMode === 'pitch' ? s.pitchMm : undefined,
-      strictness: s.strictness,
-    });
-  },
-}));
+      applyRecommendedMount: () => {
+        const v = get().getVerdict();
+        set({ mountBottom: Math.round(v.recommendedMountBottom * 10) / 10 });
+      },
+
+      getVerdict: () => {
+        const s = get();
+        return verdict({
+          size: sizeFromDiagonal(s.diagonal, s.aspectW, s.aspectH),
+          mountBottom: s.mountBottom,
+          tiltDeg: s.tiltDeg,
+          mode: s.mode,
+          viewingDistance: s.viewingDistance,
+          personaId: s.personaId,
+          horizontalPixels: s.resMode === 'pixels' ? s.horizontalPixels : undefined,
+          pitchMm: s.resMode === 'pitch' ? s.pitchMm : undefined,
+          strictness: s.strictness,
+        });
+      },
+    }),
+    {
+      name: 'iimt-config',
+      version: SCHEMA_VERSION,
+      // Persist data fields only, minus the uploaded image (a data URL that can
+      // blow the ~5 MB localStorage quota). The image survives JSON export, not
+      // reload. Functions are dropped by dataFields().
+      partialize: (s) => withoutContent(dataFields(s)),
+      // Validate the stored blob before it touches the live store, so a corrupt
+      // or stale entry degrades to defaults instead of breaking boot.
+      merge: (persisted, current) => ({
+        ...current,
+        ...validateAndApply(persisted),
+      }),
+    },
+  ),
+);

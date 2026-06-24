@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PERSONAS } from './ergonomics/constants';
 import { useConfigStore } from './store/useConfigStore';
+import { consumeShareHash } from './share/shareUrl';
 import { AboutModal } from './ui/AboutModal';
 import { ControlPanel } from './ui/ControlPanel';
 import { HelpPanel } from './ui/HelpPanel';
+import { SaveMenu } from './ui/SaveMenu';
 import { UnitToggle } from './ui/UnitToggle';
 import { VerdictPanel } from './ui/VerdictPanel';
 import { Scene } from './scene/Scene';
@@ -29,6 +31,11 @@ export default function App() {
   const fpFov = useConfigStore((s) => s.fpFov);
   const set = useConfigStore((s) => s.set);
   const [aboutOpen, setAboutOpen] = useState(false);
+
+  // A share link overrides the autosaved state for this visit, then clears the hash.
+  useEffect(() => {
+    consumeShareHash();
+  }, []);
   const fp = cameraView === 'first-person';
   const is2d = stageView === '2d';
   const isDvled = appTab === 'dvled';
@@ -117,6 +124,7 @@ export default function App() {
             </button>
           )}
           <UnitToggle />
+          <SaveMenu />
           <button className="about-btn" onClick={() => setAboutOpen(true)}>
             About
           </button>

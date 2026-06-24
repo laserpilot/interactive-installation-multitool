@@ -301,3 +301,66 @@ button.ghost { width: 100%; margin-top: 6px; background: transparent; }
 .num-entry { display: inline-flex; align-items: center; gap: 5px; }
 .num-entry input { width: 72px; text-align: right; }
 .num-entry .unit { color: var(--muted); font-size: 12px; }
+
+/* ---- Save / Share menu ---- */
+.save-menu { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+.save-dropdown {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 120;
+  min-width: 200px; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .5); padding: 6px;
+}
+.save-dropdown button {
+  text-align: left; background: transparent; border: 0; border-radius: 6px;
+  padding: 8px 10px; font-size: 13px; color: var(--text);
+}
+.save-dropdown button:hover { background: var(--panel-2); border: 0; }
+.save-sep { height: 1px; background: var(--line); margin: 5px 2px; }
+.save-flash { font-size: 12px; color: var(--muted); max-width: 240px; }
+.save-flash.err { color: var(--bad); }
+
+/* ---- Spec sheet ---- */
+.spec-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(4, 7, 11, .62);
+  display: flex; align-items: flex-start; justify-content: center; padding: 24px; overflow: auto;
+}
+.spec-sheet {
+  width: 820px; max-width: 100%; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .55);
+}
+.spec-actions {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+}
+.spec-actions .spec-spacer { flex: 1; }
+.spec-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
+/* The document itself is a light, printable surface regardless of the dark UI. */
+.spec-doc {
+  background: #ffffff; color: #10202e; border-radius: 0 0 12px 12px;
+  padding: 28px 32px; overflow-y: auto; max-height: 78vh;
+}
+.spec-doc h1 { font-size: 20px; margin: 0 0 4px; }
+.spec-doc .spec-meta { font-size: 12px; color: #6b7480; margin: 0 0 20px; }
+.spec-section { margin-bottom: 22px; break-inside: avoid; }
+.spec-section h2 { font-size: 15px; margin: 0 0 8px; border-bottom: 1px solid #dde2e8; padding-bottom: 4px; }
+.spec-verdict { font-weight: 700; font-size: 13px; margin: 0 0 8px; }
+.spec-verdict.tone-good { color: #19a05a; }
+.spec-verdict.tone-caution { color: #b8860b; }
+.spec-verdict.tone-bad { color: #c0392b; }
+.spec-doc table { width: 100%; border-collapse: collapse; }
+.spec-doc th, .spec-doc td { text-align: left; padding: 4px 8px; font-size: 13px; vertical-align: top; }
+.spec-doc th { color: #6b7480; font-weight: 500; width: 45%; }
+.spec-doc td { color: #10202e; }
+.spec-doc tr:nth-child(even) { background: #f4f6f9; }
+
+/* Print / Save-as-PDF: show only the document. */
+@media print {
+  body * { visibility: hidden; }
+  .spec-sheet, .spec-sheet * { visibility: visible; }
+  .spec-overlay { position: static; background: none; padding: 0; overflow: visible; }
+  .spec-sheet { width: 100%; border: 0; box-shadow: none; }
+  .spec-actions { display: none; }
+  .spec-doc { max-height: none; overflow: visible; }
+}
