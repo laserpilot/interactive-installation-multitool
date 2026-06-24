@@ -2,13 +2,16 @@ import { create } from 'zustand';
 import { DEFAULT_TABLE_HEIGHT, type PersonaId, type Strictness } from '../ergonomics/constants';
 import { sizeFromDiagonal, verdict, type Verdict } from '../ergonomics/engine';
 import { mToIn, type SensingMode, type SensorMount, type SensorTarget } from '../sensor/sensorMath';
+import { MOUNT_DEFAULTS as SPK_MOUNT_DEFAULTS, type SpeakerUnit, type UseCase } from '../speaker/speakerMath';
 
 export type Units = 'us' | 'metric';
 export type Mode = 'touch' | 'view';
 export type ResMode = 'pixels' | 'pitch';
 export type CameraView = 'orbit' | 'first-person';
 export type StageView = '3d' | '2d';
-export type AppTab = 'placement' | 'dvled' | 'projection' | 'table' | 'sensor';
+export type AppTab = 'placement' | 'dvled' | 'projection' | 'table' | 'sensor' | 'speaker';
+export type SpeakerWeighting = 'dba' | 'flat';
+export type CoverageView = 'spl' | 'uniformity';
 export type LedShape = 'square' | 'circle';
 export type MountType = 'wall' | 'stand';
 export type PinMode = 'distance' | 'width';
@@ -103,6 +106,20 @@ export interface ConfigState {
   sensorShowZone: boolean; // overlay the trackable floor zone
   sensorShowMeasurements: boolean; // overlay dimension lines + range labels
 
+  // --- speaker SPL coverage ---
+  speakers: SpeakerUnit[]; // placed units (1–6), each with its own mount + aim + model
+  speakerSel: number; // index of the unit the controls edit
+  speakerAmpW: number; // available amplifier / 70V-line power for the tap budget
+  speakerUseCase: UseCase; // listening scenario — sets the comfortable band
+  speakerWeighting: SpeakerWeighting; // display flat dB SPL or A-weighted dBA
+  speakerEarHeight: number; // in, ear height of the listening plane
+  speakerNoiseFloor: number; // dBA, ambient room noise floor (for SNR)
+  speakerListenerX: number; // in, listening position side offset
+  speakerListenerZ: number; // in, listening position forward distance
+  speakerCoverageView: CoverageView; // heatmap shows absolute dB SPL or ±dB uniformity
+  speakerShowField: boolean; // overlay the ear-height coverage plane
+  speakerShowMeasurements: boolean; // overlay dimension lines + labels
+
   // --- actions ---
   set: <K extends keyof ConfigState>(key: K, value: ConfigState[K]) => void;
   setContent: (url: string | null) => void;
@@ -190,6 +207,26 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   sensorPersonZ: 24, // 2 ft forward of the sensor axis
   sensorShowZone: true,
   sensorShowMeasurements: true,
+
+  // Two 8" ceiling speakers (9 ft, firing down) straddling a centred listener, so
+  // the overlap-in-the-middle case reads on load. Speech/paging scenario.
+  speakers: [
+    { mount: 'ceiling', xIn: -42, zIn: 72, mountAffIn: SPK_MOUNT_DEFAULTS.ceiling.mountAffIn,
+      yawDeg: 0, pitchDeg: -90, hCovDeg: 90, vCovDeg: 90, sensitivity: 89, powerW: 1, maxSplDb: 110 },
+    { mount: 'ceiling', xIn: 42, zIn: 72, mountAffIn: SPK_MOUNT_DEFAULTS.ceiling.mountAffIn,
+      yawDeg: 0, pitchDeg: -90, hCovDeg: 90, vCovDeg: 90, sensitivity: 89, powerW: 1, maxSplDb: 110 },
+  ],
+  speakerSel: 0,
+  speakerAmpW: 120, // a typical small 70V amp (matches the AD-P6T recommendation)
+  speakerUseCase: 'speech',
+  speakerWeighting: 'dba',
+  speakerEarHeight: 60, // standing ear height
+  speakerNoiseFloor: 50, // typical occupied-room ambient, dBA
+  speakerListenerX: 0,
+  speakerListenerZ: 72,
+  speakerCoverageView: 'spl',
+  speakerShowField: true,
+  speakerShowMeasurements: true,
 
   set: (key, value) => set({ [key]: value } as Partial<ConfigState>),
   setContent: (url) => set({ contentUrl: url }),

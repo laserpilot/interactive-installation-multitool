@@ -1,12 +1,37 @@
-# Installation Screen Multitool
+# Interactive Installation Multitool
 
-A browser tool for AV / experiential installers to sanity-check **touchscreen and
-display placement** before anything gets mounted. Set a screen size, mount height,
-and viewing distance, and it tells you whether the placement is reachable (ADA),
-comfortable to see, and sharp enough — with a 3D scene and a "view from their eyes"
-first-person mode.
+A browser tool for AV / experiential installers to sanity-check the physical layer
+of an interactive installation before anything gets mounted — across screens,
+projection, dvLED, depth sensors, and loudspeakers. Each tab runs a small,
+unit-tested engine and renders it in a 3D scene:
 
-It exists to turn two recurring gut-feel arguments into numbers you can share:
+- **Monitor Placement** — touch reach (ADA), viewing angle, pixel pitch, with a
+  "view from their eyes" first-person mode.
+- **Table Monitor** — horizontal/table touch: reach depth, ADA, seated access.
+- **dvLED preview** — viewing-distance preview of an LED wall at a given pitch.
+- **Projection** — single-projector throw geometry + photometrics (foot-candles,
+  contrast, edge-blended arrays).
+- **Sensor Coverage** — camera/depth-sensor FOV, range, and trackable zones.
+- **Speaker SPL** — speaker directivity, inverse-square dropoff, overlap, and a
+  "loud enough for the room?" dBA verdict with power budgeting.
+
+## About / disclaimer
+
+**This tool is for illustration and early-stage planning only.** Every tab is a
+*simplified* model — it ignores real-world factors like room acoustics and
+reflections, optical surface behaviour, speaker frequency response, ambient
+variation, mounting tolerances, and manufacturer-specific quirks. Numbers may be
+inaccurate or incomplete.
+
+Use it to **build intuition and frame conversations** — not as engineering
+sign-off. Always confirm against manufacturer spec sheets, your own calculations,
+and on-site measurement before you specify, quote, or install anything.
+
+## The placement core
+
+The original tool started from screen placement; the rest of this README documents
+that core. It exists to turn two recurring gut-feel arguments into numbers you can
+share:
 
 1. **A screen too big for its distance.** e.g. a 65" panel ~1 ft from the user
    subtends ~134° of visual field — physically impossible to take in. The tool
@@ -62,7 +87,21 @@ src/
     VerdictPanel.tsx # live Good/Caution/Bad verdict + reasons + metrics
     ContentUpload.tsx# image -> screen texture (client-side only)
     UnitToggle.tsx   # US <-> metric
+    AboutModal.tsx   # "About" dialog: disclaimer + per-tab summary
     units.ts         # formatting/conversion helpers
+```
+
+Each later tab follows the same shape — a framework-free `*Math.ts` engine with a
+`*.test.ts`, then a Controls sidebar + a 3D Scene that both read it, so the
+heatmap, readout, and verdict can never disagree:
+
+```
+src/
+  projection/   # throw geometry + photometrics (fc, contrast, blended arrays)
+  table/        # horizontal/table touch: reach depth, ADA, seated access
+  dvled/        # LED-wall viewing-distance preview at a given pitch
+  sensor/       # camera/depth-sensor FOV, range, trackable floor zone
+  speaker/      # speaker SPL: directivity, dropoff, overlap, "loud enough?" + power budget
 ```
 
 ### Where the real logic lives
@@ -111,6 +150,9 @@ npm run build    # production static build -> dist/
 
 ## Status / ideas not yet built
 
-- Device preset library is small; could grow (specific LED products, tablets).
+- Device/speaker preset libraries are small; could grow (specific LED products,
+  tablets, loudspeaker models).
+- Speaker tab: per-speaker tap assignment across multiple amp channels (currently a
+  single-bus power budget); octave-band Max SPL (bass-limited compression).
 - Deferred: save/share configs, PDF client export, multi-persona side-by-side,
   full anthropometric percentile sliders, obstructed-reach (kiosk depth) ADA case.

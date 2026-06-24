@@ -118,16 +118,14 @@ export function SensorControls() {
       </Row>
 
       <h2>Sensing task</h2>
-      <Row label="Mode">
-        <span className="seg sm wrap">
-          {MODES.map((m) => (
-            <button key={m.id} className={s.sensorMode === m.id ? 'on' : ''}
-              onClick={() => applyMode(m.id)}>
-              {m.label}
-            </button>
-          ))}
-        </span>
-      </Row>
+      <div className="btn-grid">
+        {MODES.map((m) => (
+          <button key={m.id} className={s.sensorMode === m.id ? 'on' : ''}
+            onClick={() => applyMode(m.id)}>
+            {m.label}
+          </button>
+        ))}
+      </div>
       <p className="hint">{SENSING_MODES[s.sensorMode].blurb}</p>
 
       <Row label="Reliable near">

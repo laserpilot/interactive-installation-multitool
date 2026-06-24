@@ -198,10 +198,84 @@ button.ghost { width: 100%; margin-top: 6px; background: transparent; }
 .dvled-note { color: var(--muted); font-size: 12px; margin: 0; max-width: 720px; }
 
 /* ---- sensor: per-body-part coverage chips ---- */
-.seg.wrap { flex-wrap: wrap; }
+.btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 2px; }
+.btn-grid button { width: 100%; }
+.btn-grid button.on { background: var(--accent); color: #04121f; font-weight: 600; border-color: var(--accent); }
 .sensor-parts { display: flex; gap: 10px; flex-wrap: wrap; }
 .sensor-part { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); text-transform: capitalize; }
 .sensor-part-dot { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+
+/* ---- speaker: per-unit contribution chips + remove link ---- */
+.sensor-parts .sensor-part.contrib { text-transform: none; font-variant-numeric: tabular-nums; }
+.link-btn {
+  background: none; border: none; color: var(--muted); font-size: 12px;
+  padding: 0; margin: -2px 0 6px; cursor: pointer; text-decoration: underline;
+}
+.link-btn:hover { color: var(--bad); }
+
+/* ---- info "?" popovers (spec-sheet guidance) ---- */
+.infodot {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; margin-left: 5px; border-radius: 50%;
+  background: var(--panel-2); color: var(--muted);
+  font-size: 10px; font-weight: 700; cursor: help; vertical-align: middle;
+  box-shadow: inset 0 0 0 1px var(--line); user-select: none;
+}
+.infodot:hover, .infodot:focus-visible { color: var(--text); outline: none; }
+.infodot-pop {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  width: 248px; max-width: 70vw; z-index: 40;
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+  font-size: 12px; line-height: 1.45; font-weight: 400; text-transform: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  opacity: 0; visibility: hidden; transition: opacity .12s ease;
+  pointer-events: none;
+}
+.infodot-pop b { color: var(--text); font-weight: 700; }
+.infodot:hover .infodot-pop, .infodot:focus-within .infodot-pop,
+.infodot:focus .infodot-pop { opacity: 1; visibility: visible; }
+.infodot-pop::after {
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: var(--panel);
+}
+
+/* ---- About modal ---- */
+.about-btn { background: transparent; }
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(4, 7, 11, .62);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.modal {
+  width: 560px; max-width: 100%; max-height: 86vh; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .55);
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+}
+.modal-head strong { font-size: 16px; }
+.modal-close {
+  background: transparent; border: 0; color: var(--muted); font-size: 15px; padding: 4px 8px;
+}
+.modal-close:hover { color: var(--text); border: 0; }
+.modal-body { padding: 16px 18px; overflow-y: auto; }
+.modal-disclaimer {
+  background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--caution);
+  border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: var(--text);
+}
+.modal-disclaimer b, .modal-disclaimer strong { color: var(--text); }
+.modal-subhead {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin: 18px 0 10px;
+}
+.modal-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.modal-tabs li { display: flex; flex-direction: column; gap: 2px; }
+.modal-tab-name { font-weight: 700; font-size: 13.5px; color: var(--text); }
+.modal-tab-blurb { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.modal-foot { margin: 16px 0 0; font-size: 12px; color: var(--muted); }
 
 /* ---- projection ---- */
 .proj-stage { position: absolute; inset: 0; display: flex; flex-direction: column; background: #06080b; }
