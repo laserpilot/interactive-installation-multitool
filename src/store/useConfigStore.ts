@@ -48,6 +48,7 @@ export interface ConfigState {
   appTab: AppTab;
   stageView: StageView;
   cameraView: CameraView;
+  fpFov: number; // deg, vertical FOV for the first-person camera
   showReach: boolean;
   strictness: Strictness;
   contentUrl: string | null;
@@ -152,6 +153,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   appTab: 'placement',
   stageView: '3d',
   cameraView: 'orbit',
+  fpFov: 60,
   showReach: true,
   strictness: 'realistic',
   contentUrl: null,

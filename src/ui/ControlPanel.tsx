@@ -228,6 +228,35 @@ export function ControlPanel() {
         </p>
       )}
 
+      {s.cameraView === 'first-person' && (
+        <div className="field">
+          <div className="field-head">
+            <span className="row-label">Field of view (°)</span>
+            <input
+              className="num-sm"
+              type="number"
+              min={40}
+              max={100}
+              value={Math.round(s.fpFov)}
+              onChange={(e) => s.set('fpFov', clampFov(Number(e.target.value)))}
+            />
+          </div>
+          <input
+            className="slider"
+            type="range"
+            min={40}
+            max={100}
+            step={1}
+            value={s.fpFov}
+            onChange={(e) => s.set('fpFov', Number(e.target.value))}
+          />
+          <p className="hint">
+            Vertical FOV of the “from their eyes” view. ~60° matches the comfortable
+            focal cone; widen to feel more peripheral fill (edges distort past ~90°).
+          </p>
+        </div>
+      )}
+
       <h2>Resolution</h2>
       <Row label="Specify by">
         <span className="seg">
@@ -273,4 +302,8 @@ export function ControlPanel() {
 
 function round(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+function clampFov(n: number): number {
+  return Math.min(100, Math.max(40, n));
 }

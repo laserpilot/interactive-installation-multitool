@@ -26,6 +26,7 @@ export default function App() {
   const stageView = useConfigStore((s) => s.stageView);
   const appTab = useConfigStore((s) => s.appTab);
   const personaId = useConfigStore((s) => s.personaId);
+  const fpFov = useConfigStore((s) => s.fpFov);
   const set = useConfigStore((s) => s.set);
   const [aboutOpen, setAboutOpen] = useState(false);
   const fp = cameraView === 'first-person';
@@ -162,8 +163,8 @@ export default function App() {
               <Scene />
               {fp && (
                 <div className="fp-hint">
-                  First-person view at ~55° FOV. If the screen spills past the edges,
-                  it's too big for this distance.
+                  First-person view at ~{Math.round(fpFov)}° FOV · drag to look around.
+                  If the screen spills past the edges, it's too big for this distance.
                 </div>
               )}
             </>
