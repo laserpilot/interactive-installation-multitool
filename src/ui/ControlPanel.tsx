@@ -211,6 +211,15 @@ export function ControlPanel() {
         Show reach zone on screen
       </label>
 
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={s.showAdaOnScreen}
+          onChange={(e) => s.set('showAdaOnScreen', e.target.checked)}
+        />
+        Shade screen by ADA reach (in / out of 15–48")
+      </label>
+
       {s.mode === 'view' ? (
         <Row label={`Viewing distance (${u})`}>
           <input

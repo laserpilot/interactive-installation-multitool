@@ -37,7 +37,7 @@ export function VerdictPanel() {
   const screen = sizeFromDiagonal(diagonal, aspectW, aspectH);
 
   return (
-    <div className="panel verdict">
+    <div className="verdict-readout">
       <div className="verdict-head">
         <div className={`verdict-badge ${v.level}`}>
           <span className="verdict-dot" />

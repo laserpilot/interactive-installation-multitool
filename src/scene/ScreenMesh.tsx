@@ -1,13 +1,45 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { useConfigStore } from '../store/useConfigStore';
+import { ADA_REACH_HIGH, ADA_REACH_LOW } from '../ergonomics/constants';
 import { sizeFromDiagonal } from '../ergonomics/engine';
 import { screenGeometry } from '../ergonomics/screenGeometry';
 import { f } from './scale';
 import { makeTestPattern } from './testPattern';
 
+const IN_ADA = '#19a05a'; // within the 15–48" operable band
+const OUT_ADA = '#e06c6c'; // above or below it
+
+interface AdaSeg {
+  y: number;
+  h: number;
+  color: string;
+}
+
+/** Screen face split into ADA in/out bands, in panel-local world units. */
+function adaReachSegments(
+  enabled: boolean,
+  mountBottom: number,
+  heightIn: number,
+  tiltRad: number,
+): AdaSeg[] {
+  if (!enabled) return [];
+  const cos = Math.max(0.2, Math.cos(tiltRad));
+  const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+  const dFor = (aff: number) => clamp((aff - mountBottom) / cos, 0, heightIn);
+  const dLo = dFor(ADA_REACH_LOW);
+  const dHi = dFor(ADA_REACH_HIGH);
+  const seg = (d0: number, d1: number, color: string): AdaSeg | null =>
+    d1 - d0 > 0.25 ? { y: f((d0 + d1) / 2 - heightIn / 2), h: f(d1 - d0), color } : null;
+  return [
+    seg(0, dLo, OUT_ADA), // below reach
+    seg(dLo, dHi, IN_ADA), // within reach
+    seg(dHi, heightIn, OUT_ADA), // above reach
+  ].filter((x): x is AdaSeg => x !== null);
+}
+
 export function ScreenMesh() {
-  const { diagonal, aspectW, aspectH, mountBottom, tiltDeg, mountType, contentUrl } =
+  const { diagonal, aspectW, aspectH, mountBottom, tiltDeg, mountType, contentUrl, showAdaOnScreen } =
     useConfigStore();
   const size = sizeFromDiagonal(diagonal, aspectW, aspectH);
   const [uploaded, setUploaded] = useState<THREE.Texture | null>(null);
@@ -43,6 +75,13 @@ export function ScreenMesh() {
   const pivotY = f(mountBottom);
   const pivotZ = f(geom.frontOffset) + 0.05; // bottom edge pushed forward off the wall
 
+  // Split the screen face into ADA in/out bands. Work in panel-local "distance up
+  // the panel" (inches, 0 = bottom edge … size.height = top edge); a tilt stretches
+  // how much panel each AFF inch covers, so divide by cos(tilt). Local Y in the
+  // tilted group is panel-distance recentred on the panel midpoint. (Cheap to
+  // recompute each render, so no memo.)
+  const adaSegments = adaReachSegments(showAdaOnScreen, mountBottom, size.height, tiltRad);
+
   return (
     <group>
       {/* Bottom-edge pivot out in front of the wall; tilt back so the top
@@ -59,6 +98,21 @@ export function ScreenMesh() {
             <planeGeometry args={[w, h]} />
             <meshBasicMaterial map={map} toneMapped={false} />
           </mesh>
+          {/* ADA reach shading: green where the screen is operable (15–48" AFF),
+              red where it falls outside the band */}
+          {adaSegments.map((s, i) => (
+            <mesh key={i} position={[0, s.y, 0.03]}>
+              <planeGeometry args={[w, s.h]} />
+              <meshBasicMaterial
+                color={s.color}
+                transparent
+                opacity={0.4}
+                depthWrite={false}
+                toneMapped={false}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          ))}
         </group>
       </group>
 

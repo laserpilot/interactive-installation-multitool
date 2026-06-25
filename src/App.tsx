@@ -17,6 +17,7 @@ import { ProjectionScene } from './projection/ProjectionScene';
 import { TableControls } from './table/TableControls';
 import { TableElevation } from './table/TableElevation';
 import { TableScene } from './table/TableScene';
+import { TableVerdictPanel } from './table/TableVerdictPanel';
 import { SensorControls } from './sensor/SensorControls';
 import { SensorScene } from './sensor/SensorScene';
 import { SpeakerControls } from './speaker/SpeakerControls';
@@ -149,7 +150,6 @@ export default function App() {
             <>
               <HelpPanel />
               <ControlPanel />
-              <VerdictPanel />
             </>
           )}
         </aside>
@@ -163,19 +163,29 @@ export default function App() {
           ) : isSpeaker ? (
             <SpeakerScene />
           ) : isTable ? (
-            is2d ? <TableElevation /> : <TableScene />
-          ) : is2d ? (
-            <SideElevation />
+            <div className="proj-stage">
+              <div className="proj-frame">{is2d ? <TableElevation /> : <TableScene />}</div>
+              <TableVerdictPanel />
+            </div>
           ) : (
-            <>
-              <Scene />
-              {fp && (
-                <div className="fp-hint">
-                  First-person view at ~{Math.round(fpFov)}° FOV · drag to look around.
-                  If the screen spills past the edges, it's too big for this distance.
-                </div>
-              )}
-            </>
+            <div className="proj-stage">
+              <div className="proj-frame">
+                {is2d ? (
+                  <SideElevation />
+                ) : (
+                  <>
+                    <Scene />
+                    {fp && (
+                      <div className="fp-hint">
+                        First-person view at ~{Math.round(fpFov)}° FOV · drag to look around.
+                        If the screen spills past the edges, it's too big for this distance.
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <VerdictPanel />
+            </div>
           )}
         </section>
       </main>

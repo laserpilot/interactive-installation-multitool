@@ -25,12 +25,14 @@ function WallLabel({
   return (
     <Text
       position={position}
-      fontSize={0.3}
+      fontSize={0.32}
       color={color}
-      outlineWidth={0.014}
+      outlineWidth={0.04}
       outlineColor="#ffffff"
+      outlineOpacity={0.95}
       anchorX={anchorX}
       anchorY="middle"
+      renderOrder={10}
     >
       {text}
     </Text>
@@ -93,12 +95,14 @@ export function Measurements() {
       <Text
         position={[xG + 0.35, 0.03, dz / 2]}
         rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.3}
+        fontSize={0.32}
         color="#10202e"
-        outlineWidth={0.014}
+        outlineWidth={0.04}
         outlineColor="#ffffff"
+        outlineOpacity={0.95}
         anchorX="center"
         anchorY="middle"
+        renderOrder={10}
       >
         {fmtDist(distance, units)}
       </Text>

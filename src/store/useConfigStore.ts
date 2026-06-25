@@ -57,6 +57,7 @@ export interface ConfigState {
   cameraView: CameraView;
   fpFov: number; // deg, vertical FOV for the first-person camera
   showReach: boolean;
+  showAdaOnScreen: boolean; // shade the screen by which parts fall in the ADA reach band
   strictness: Strictness;
   contentUrl: string | null;
 
@@ -169,6 +170,7 @@ export const INITIAL: ConfigData = {
   cameraView: 'orbit',
   fpFov: 60,
   showReach: true,
+  showAdaOnScreen: false,
   strictness: 'realistic',
   contentUrl: null,
 

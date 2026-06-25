@@ -8,7 +8,9 @@ export function ReachBandOverlay({ width }: { width: number }) {
   const high = f(ADA_REACH_HIGH);
   const h = high - low;
   const cy = (low + high) / 2;
-  const w = f(width);
+  // Run the band a bit wider than the screen so its bounds read clearly to the
+  // left and right of the monitor rather than hiding behind it.
+  const w = f(width) + 2 * f(14);
 
   return (
     <group>
@@ -25,23 +27,27 @@ export function ReachBandOverlay({ width }: { width: number }) {
       ))}
       <Text
         position={[-w / 2 - 0.4, high, 0.05]}
-        fontSize={0.22}
+        fontSize={0.24}
         color="#0c6e39"
-        outlineWidth={0.01}
+        outlineWidth={0.035}
         outlineColor="#ffffff"
+        outlineOpacity={0.95}
         anchorX="right"
         anchorY="middle"
+        renderOrder={10}
       >
         {`ADA 48"`}
       </Text>
       <Text
         position={[-w / 2 - 0.4, low, 0.05]}
-        fontSize={0.22}
+        fontSize={0.24}
         color="#0c6e39"
-        outlineWidth={0.01}
+        outlineWidth={0.035}
         outlineColor="#ffffff"
+        outlineOpacity={0.95}
         anchorX="right"
         anchorY="middle"
+        renderOrder={10}
       >
         {`ADA 15"`}
       </Text>
