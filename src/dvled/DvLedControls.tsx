@@ -30,10 +30,12 @@ function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
 }
 
-/** Reduce a width:height (in any unit) to a tidy integer ratio, e.g. 2:1, 16:9. */
+/** Reduce a width:height (in any unit) to a tidy integer ratio, e.g. 2:1, 16:9.
+ *  Each side is clamped to ≥1 so a sub-0.5 dimension can't round to a 0 aspect
+ *  (which collapses the screen size and hangs the test-pattern generator). */
 function reduceRatio(w: number, h: number): [number, number] {
-  const a = Math.round(w);
-  const b = Math.round(h);
+  const a = Math.max(1, Math.round(w));
+  const b = Math.max(1, Math.round(h));
   const g = gcd(a, b) || 1;
   return [a / g, b / g];
 }
@@ -65,6 +67,17 @@ export function DvLedControls() {
   // Fill derived from the pitch (used when "Fill from pitch" is on).
   const lockedFill = pitchFillFraction(s.pitchMm);
   const emitterMm = emitterWidthForPitch(s.pitchMm);
+
+  // Buildability: LED cabinets are almost always 0.5 m modules, so a wall whose
+  // width or height doesn't land on a 0.5 m grid usually means custom panels,
+  // masking, or black bars. Flag it and suggest the nearest standard build.
+  const IN_PER_M = 39.3701;
+  const MOD_M = 0.5;
+  const wM = wall.width / IN_PER_M;
+  const hM = wall.height / IN_PER_M;
+  const nearestM = (m: number) => Math.round(m / MOD_M) * MOD_M;
+  const offGridM = (m: number) => Math.abs(m - nearestM(m));
+  const offGrid = wM > 0 && hM > 0 && (offGridM(wM) > 0.03 || offGridM(hM) > 0.03);
 
   return (
     <div className="panel">
@@ -162,6 +175,14 @@ export function DvLedControls() {
             />
           </span>
         </Row>
+      )}
+
+      {offGrid && (
+        <p className="hint warn">
+          ⚠ LED cabinets are usually 0.5 m modules. This wall (~{wM.toFixed(2)} × {hM.toFixed(2)} m)
+          isn't on a 0.5 m grid — nearest standard build is {nearestM(wM).toFixed(1)} × {nearestM(hM).toFixed(1)} m.
+          Off-grid sizes typically need custom panels, masking, or black bars — check the panel spec.
+        </p>
       )}
 
       <Row label="Pixel pitch (mm)">

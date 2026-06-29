@@ -39,7 +39,10 @@ export function sizeFromDiagonal(
   aspectW: number,
   aspectH: number,
 ): ScreenSize {
-  const k = diagonal / Math.hypot(aspectW, aspectH);
+  // Guard a zeroed/cleared aspect (hypot 0 → divide by zero → NaN/∞ size, which
+  // downstream turns into runaway render loops).
+  const denom = Math.hypot(aspectW, aspectH);
+  const k = denom > 0 && Number.isFinite(denom) ? diagonal / denom : 0;
   return { width: aspectW * k, height: aspectH * k, diagonal };
 }
 

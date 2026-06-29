@@ -100,7 +100,8 @@ export function TableElevation() {
   }
 
   const gridLines = [];
-  for (let h = 12; h < Hc; h += 12) gridLines.push(h);
+  // Cap the count: a non-finite or absurd Hc must never spin this loop forever.
+  for (let h = 12; h < Hc && h < 6000; h += 12) gridLines.push(h);
 
   return (
     <div className="twod-wrap">

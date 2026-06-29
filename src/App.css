@@ -63,6 +63,10 @@ input[type=number], select {
 .aspect input { width: 48px; }
 
 .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.hint.warn {
+  color: var(--caution); background: rgba(241, 196, 15, .08);
+  border: 1px solid rgba(241, 196, 15, .35); border-radius: 6px; padding: 8px 10px;
+}
 
 .field { margin: 10px 0 2px; }
 .field-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

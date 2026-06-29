@@ -28,9 +28,15 @@ export function makeTestPatternCanvas(
   diagonalIn: number,
 ): HTMLCanvasElement {
   const LONG = 1024;
-  const landscape = aspectW >= aspectH;
-  const w = landscape ? LONG : Math.round((LONG * aspectW) / aspectH);
-  const h = landscape ? Math.round((LONG * aspectH) / aspectW) : LONG;
+  // Sanitize the aspect: a zeroed / NaN / wildly lopsided ratio would collapse a
+  // dimension toward 0, which makes the grid step below round to 0 — and a
+  // `for (… ; … ; += 0)` loop never terminates, freezing the tab. Fall back to
+  // 16:9 for nonsense, and clamp so neither side can shrink below a few pixels.
+  const aw = Number.isFinite(aspectW) && aspectW > 0 ? aspectW : 16;
+  const ah = Number.isFinite(aspectH) && aspectH > 0 ? aspectH : 9;
+  const landscape = aw >= ah;
+  const w = Math.max(16, landscape ? LONG : Math.round((LONG * aw) / ah));
+  const h = Math.max(16, landscape ? Math.round((LONG * ah) / aw) : LONG);
 
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -63,7 +69,7 @@ export function makeTestPatternCanvas(
   // alignment grid over the whole frame
   ctx.strokeStyle = 'rgba(255,255,255,0.22)';
   ctx.lineWidth = 1;
-  const grid = Math.round(Math.min(w, h) / 10);
+  const grid = Math.max(1, Math.round(Math.min(w, h) / 10));
   for (let x = grid; x < w; x += grid) {
     ctx.beginPath();
     ctx.moveTo(x + 0.5, 0);
