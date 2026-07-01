@@ -106,6 +106,7 @@ function CameraRig() {
   const dragging = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
   const baseQuat = useRef(new THREE.Quaternion()); // orientation that faces the screen
+  const eyePos = useRef(new THREE.Vector3()); // authoritative eye position, enforced per-frame
 
   // Place the eye and recompute the base (screen-facing) orientation whenever the
   // geometry moves. We do NOT touch yaw/pitch here, so the head keeps facing the
@@ -116,6 +117,7 @@ function CameraRig() {
     const cam = fpRef.current;
     _eye.set(L.eye[0], L.eye[1], L.eye[2] - f(3));
     _center.set(center[0], center[1], center[2]);
+    eyePos.current.copy(_eye);
     cam.position.copy(_eye);
     // Matrix4.lookAt uses the camera convention (−z toward target); Object3D.lookAt
     // would flip a non-camera dummy 180° and aim us back at the head.
@@ -170,6 +172,12 @@ function CameraRig() {
   // the quaternion — the eye position set above never drifts.
   useFrame(({ camera }) => {
     if (cameraView !== 'first-person') return;
+    // Enforce BOTH position and orientation every frame. An unrelated store
+    // update (e.g. toggling the type specimen) can re-render the rig and hand
+    // r3f a freshly-defaulted camera at the origin; the geometry-keyed effect
+    // above won't re-run to reposition it, so without this the view would snap
+    // to empty space. Driving position from the ref keeps first-person stable.
+    camera.position.copy(eyePos.current);
     _qYaw.setFromAxisAngle(WORLD_UP, yaw.current);
     _qPitch.setFromAxisAngle(RIGHT, pitch.current);
     camera.quaternion.copy(baseQuat.current).multiply(_qYaw).multiply(_qPitch);

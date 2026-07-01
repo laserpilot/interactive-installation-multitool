@@ -8,6 +8,7 @@ import { HelpPanel } from './ui/HelpPanel';
 import { SaveMenu } from './ui/SaveMenu';
 import { UnitToggle } from './ui/UnitToggle';
 import { VerdictPanel } from './ui/VerdictPanel';
+import { LegibilityControls } from './typography/LegibilityControls';
 import { Scene } from './scene/Scene';
 import { SideElevation } from './twod/SideElevation';
 import { DvLedControls } from './dvled/DvLedControls';
@@ -150,6 +151,7 @@ export default function App() {
             <>
               <HelpPanel />
               <ControlPanel />
+              <LegibilityControls />
             </>
           )}
         </aside>

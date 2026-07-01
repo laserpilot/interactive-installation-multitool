@@ -47,6 +47,12 @@ export function serialize(
   return { v: SCHEMA_VERSION, savedAt: new Date().toISOString(), state: stateOut };
 }
 
+function isTypeSample(u: unknown): boolean {
+  if (!u || typeof u !== 'object') return false;
+  const s = u as Record<string, unknown>;
+  return typeof s.label === 'string' && typeof s.fontPx === 'number' && Number.isFinite(s.fontPx);
+}
+
 function isSpeakerUnit(u: unknown): boolean {
   if (!u || typeof u !== 'object') return false;
   const s = u as Record<string, unknown>;
@@ -84,6 +90,16 @@ export function validateAndApply(raw: unknown): Partial<ConfigData> {
     }
     if (key === 'speakers') {
       if (Array.isArray(val) && val.length > 0 && val.every(isSpeakerUnit)) out[key] = val;
+      continue;
+    }
+    if (key === 'typeSamples') {
+      if (Array.isArray(val) && val.length > 0 && val.every(isTypeSample)) out[key] = val;
+      continue;
+    }
+    if (key === 'screenPpi') {
+      // number | null — a saved number would be rejected by the primitive branch
+      // below (default is null → typeof 'object'), so handle it explicitly.
+      if (val === null || (typeof val === 'number' && Number.isFinite(val))) out[key] = val;
       continue;
     }
     // Primitive fields: accept only when the runtime type matches the default.

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_TABLE_HEIGHT, type PersonaId, type Strictness } from '../ergonomics/constants';
 import { sizeFromDiagonal, verdict, type Verdict } from '../ergonomics/engine';
+import { legibilityReport, type LegibilityReport, type TypeSample } from '../typography/legibility';
 import { mToIn, type SensingMode, type SensorMount, type SensorTarget } from '../sensor/sensorMath';
 import { MOUNT_DEFAULTS as SPK_MOUNT_DEFAULTS, type SpeakerUnit, type UseCase } from '../speaker/speakerMath';
 import { dataFields, validateAndApply, withoutContent } from './snapshot';
@@ -60,6 +61,13 @@ export interface ConfigState {
   showAdaOnScreen: boolean; // shade the screen by which parts fall in the ADA reach band
   strictness: Strictness;
   contentUrl: string | null;
+
+  // --- type & legibility ---
+  typeArtboardPx: number; // artboard width in px that maps across the screen
+  typeSamples: TypeSample[]; // named type sizes (artboard px) to evaluate
+  typeSampleText: string; // the string rendered in the on-screen specimen
+  typeShowSpecimen: boolean; // drive the type specimen onto the screen face
+  screenPpi: number | null; // calibrated PPI of the DESIGNER's own display (true-scale)
 
   // --- LED Display preview ---
   dvledDistance: number; // in (eye-to-wall for the preview tab)
@@ -134,13 +142,14 @@ export interface ConfigState {
   setContent: (url: string | null) => void;
   applyRecommendedMount: () => void;
   getVerdict: () => Verdict;
+  getLegibility: () => LegibilityReport;
 }
 
 /** The serializable fields only — the store minus its action functions. This is
  *  what gets saved/restored across localStorage, JSON files, and share links. */
 export type ConfigData = Omit<
   ConfigState,
-  'set' | 'setContent' | 'applyRecommendedMount' | 'getVerdict'
+  'set' | 'setContent' | 'applyRecommendedMount' | 'getVerdict' | 'getLegibility'
 >;
 
 export const INITIAL: ConfigData = {
@@ -173,6 +182,16 @@ export const INITIAL: ConfigData = {
   showAdaOnScreen: false,
   strictness: 'realistic',
   contentUrl: null,
+
+  typeArtboardPx: 1920,
+  typeSamples: [
+    { label: 'Body', fontPx: 16 },
+    { label: 'Subhead', fontPx: 32 },
+    { label: 'Headline', fontPx: 72 },
+  ],
+  typeSampleText: 'The quick brown fox',
+  typeShowSpecimen: false,
+  screenPpi: null,
 
   dvledDistance: 120, // 10 ft
   dvledFov: 40,
@@ -272,6 +291,28 @@ export const useConfigStore = create<ConfigState>()(
           horizontalPixels: s.resMode === 'pixels' ? s.horizontalPixels : undefined,
           pitchMm: s.resMode === 'pitch' ? s.pitchMm : undefined,
           strictness: s.strictness,
+        });
+      },
+
+      getLegibility: () => {
+        const s = get();
+        const size = sizeFromDiagonal(s.diagonal, s.aspectW, s.aspectH);
+        // Perception is judged at the same effective distance the verdict uses:
+        // arm's length in touch mode, the configured standoff when viewing.
+        const distanceIn = s.getVerdict().effectiveDistance;
+        // Native horizontal pixels: given directly, or derived from LED pitch.
+        const screenPx =
+          s.resMode === 'pixels'
+            ? s.horizontalPixels
+            : s.pitchMm > 0
+              ? (size.width * 25.4) / s.pitchMm
+              : 0;
+        return legibilityReport({
+          samples: s.typeSamples,
+          artboardPx: s.typeArtboardPx,
+          screenWidthIn: size.width,
+          screenPx,
+          distanceIn,
         });
       },
     }),

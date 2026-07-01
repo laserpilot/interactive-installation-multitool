@@ -4,6 +4,7 @@ import { useConfigStore } from '../store/useConfigStore';
 import { ADA_REACH_HIGH, ADA_REACH_LOW } from '../ergonomics/constants';
 import { sizeFromDiagonal } from '../ergonomics/engine';
 import { screenGeometry } from '../ergonomics/screenGeometry';
+import { makeTypeSpecimen } from '../typography/typeSpecimen';
 import { f } from './scale';
 import { makeTestPattern } from './testPattern';
 
@@ -39,8 +40,10 @@ function adaReachSegments(
 }
 
 export function ScreenMesh() {
-  const { diagonal, aspectW, aspectH, mountBottom, tiltDeg, mountType, contentUrl, showAdaOnScreen } =
-    useConfigStore();
+  const {
+    diagonal, aspectW, aspectH, mountBottom, tiltDeg, mountType, contentUrl, showAdaOnScreen,
+    typeShowSpecimen, typeSamples, typeSampleText, typeArtboardPx,
+  } = useConfigStore();
   const size = sizeFromDiagonal(diagonal, aspectW, aspectH);
   const [uploaded, setUploaded] = useState<THREE.Texture | null>(null);
 
@@ -50,6 +53,23 @@ export function ScreenMesh() {
     [aspectW, aspectH, diagonal],
   );
   useEffect(() => () => testPattern.dispose(), [testPattern]);
+
+  // Type specimen — the sample lines drawn at true artboard proportions. Only
+  // built when the specimen is shown, and regenerated when its inputs change.
+  const specimen = useMemo(
+    () =>
+      typeShowSpecimen
+        ? makeTypeSpecimen({
+            samples: typeSamples,
+            text: typeSampleText,
+            artboardPx: typeArtboardPx,
+            aspectW,
+            aspectH,
+          })
+        : null,
+    [typeShowSpecimen, typeSamples, typeSampleText, typeArtboardPx, aspectW, aspectH],
+  );
+  useEffect(() => () => specimen?.dispose(), [specimen]);
 
   useEffect(() => {
     if (!contentUrl) {
@@ -67,7 +87,8 @@ export function ScreenMesh() {
     };
   }, [contentUrl]);
 
-  const map = uploaded ?? testPattern;
+  // Specimen wins when shown, else an uploaded image, else the test pattern.
+  const map = specimen ?? uploaded ?? testPattern;
   const w = f(size.width);
   const h = f(size.height);
   const tiltRad = (tiltDeg * Math.PI) / 180;
