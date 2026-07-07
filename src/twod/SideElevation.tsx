@@ -288,7 +288,7 @@ const haloStyle: React.CSSProperties = {
   strokeWidth: 1.1,
 };
 
-const VLEVEL = { good: 'GOOD', caution: 'CAUTION', bad: 'BAD IDEA' } as const;
+const VLEVEL = { good: 'GOOD', caution: 'CAUTION', bad: 'RECONSIDER' } as const;
 const VCOLOR = { good: GREEN, caution: '#b8860b', bad: '#c0392b' } as const;
 
 /** Title/spec block — the things a side elevation can't show as a dimension. */

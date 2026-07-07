@@ -3,7 +3,7 @@ import { sizeFromDiagonal } from '../ergonomics/engine';
 import { useConfigStore } from '../store/useConfigStore';
 import { fmtDist, fmtLen } from './units';
 
-const LEVEL_LABEL = { good: 'Good', caution: 'Caution', bad: 'Bad idea' } as const;
+const LEVEL_LABEL = { good: 'Good', caution: 'Caution', bad: 'Reconsider' } as const;
 const REASON_ICON = { good: '✓', caution: '!', bad: '✕' } as const;
 
 export function VerdictPanel() {

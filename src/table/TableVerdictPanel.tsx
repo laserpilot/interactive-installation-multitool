@@ -4,7 +4,7 @@ import { tableVerdict } from '../ergonomics/tableEngine';
 import { useConfigStore } from '../store/useConfigStore';
 import { fmtLen } from '../ui/units';
 
-const LEVEL_LABEL = { good: 'Good', caution: 'Caution', bad: 'Bad idea' } as const;
+const LEVEL_LABEL = { good: 'Good', caution: 'Caution', bad: 'Reconsider' } as const;
 const REASON_ICON = { good: '✓', caution: '!', bad: '✕' } as const;
 
 /** Verdict readout for the Table Monitor tab, shown under the viewport (matching

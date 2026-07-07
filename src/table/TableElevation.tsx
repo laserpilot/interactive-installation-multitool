@@ -227,7 +227,7 @@ const haloStyle: React.CSSProperties = {
   strokeWidth: 1.1,
 };
 
-const VLEVEL = { good: 'GOOD', caution: 'CAUTION', bad: 'BAD IDEA' } as const;
+const VLEVEL = { good: 'GOOD', caution: 'CAUTION', bad: 'RECONSIDER' } as const;
 const VCOLOR = { good: GREEN, caution: '#b8860b', bad: '#c0392b' } as const;
 
 function ADATick({ x, yTop, yBot, label, fs }: { x: number; yTop: number; yBot: number; label: string; fs: number }) {
